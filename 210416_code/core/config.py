@@ -5,6 +5,7 @@ class VAE_cifar10:
     train_dist = 'cifar10'
     ood_list = ['cifar10', 'svhn', 'celeba', 'lsun', 'noise']
     dataroot = '../data'
+    modelroot = '../saved_models'
     workers = 2
     imageSize = 32
     nc = 3   # Num of c (channels)
@@ -12,18 +13,16 @@ class VAE_cifar10:
     ngf = 64 # Num of Generator Filter size (scaling factor)
     ngpu = 1
     beta = 1 # Beta-VAE !
-    state_E = f'../saved_models/VAE_cifar10/netE_pixel_nz_{nz}_ngf_{ngf}_beta_{beta}_epoch_200.pth'
-    state_G = f'../saved_models/VAE_cifar10/netG_pixel_nz_{nz}_ngf_{ngf}_beta_{beta}_epoch_200.pth'
     batch_size = 1
     train_batchsize = 1
     num_samples = 20
-    with_label = True # True if len(dataset[0]) == 2
     
     
 class VAE_fmnist:
     train_dist = 'fmnist'
     ood_list = ['fmnist', 'mnist', 'noise']
     dataroot = '../data'
+    modelroot = '../saved_models'
     workers = 2
     imageSize = 32
     nc = 1   # Num of c (channels)
@@ -31,12 +30,9 @@ class VAE_fmnist:
     ngf = 32 # Num of Generator Filter size (scaling factor)
     ngpu = 1
     beta = 1 # Beta-VAE !
-    state_E = f'../saved_models/VAE_fmnist/netE_pixel_nz_{nz}_ngf_{ngf}_beta_{beta}_epoch_200.pth'
-    state_G = f'../saved_models/VAE_fmnist/netG_pixel_nz_{nz}_ngf_{ngf}_beta_{beta}_epoch_200.pth'
     batch_size = 1
     train_batchsize = 1
     num_samples = 20
-    with_label = True # True if len(dataset[0]) == 2
     
     
 class GLOW_cifar10:

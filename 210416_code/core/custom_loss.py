@@ -22,3 +22,22 @@ def VAE_loss(x, output, beta=1):
     recl = torch.sum(recl) / b
     kld = KL_div(mu, logvar)
     return recl + beta * kld.mean()
+
+def loglikelihood(x, z, kernel_output):
+    y, mu, logvar = kernel_output
+    b = x.size(0)
+    target = Variable(x.data.view(-1) * 255).long()
+    y = y.contiguous()
+    y = y.view(-1,256)
+    recl = _loss_fn(y, target)
+    recl = recl.view(b,-1)
+    var = logvar.exp()
+    recl_loglikelihood = -recl.sum(1)
+    log_ratio = \
+        logvar.sum(1).squeeze() / 2 \
+        + ((z - mu) ** 2 / (2 * var)).sum(1).squeeze() \
+        - (z ** 2).sum(1).squeeze() / 2
+    loglikelihood = recl_loglikelihood + log_ratio
+    loglikelihood = torch.logsumexp(loglikelihood, 0)
+    return - loglikelihood
+    

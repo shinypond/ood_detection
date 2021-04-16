@@ -3,10 +3,11 @@ import DCGAN_VAE_pixel as DVAE
 import config
 from glow.model import Glow
 
-def load_pretrained_VAE(option='cifar10'):
+def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, epoch=None):
     
     """ Load the pre-trained VAE model (for CIFAR10, FMNIST) """
     """ option : 'cifar10' or 'fmnist' is available !! """
+    """ ngf, nz, beta : You can choose them !! There are various pre-trained VAE models ! """
     
     if option == 'cifar10':
         opt = config.VAE_cifar10
@@ -14,12 +15,22 @@ def load_pretrained_VAE(option='cifar10'):
         assert option == 'fmnist'
         opt = config.VAE_fmnist
         
+    if ngf:
+        opt.ngf = ngf
+    if nz:
+        opt.nz = nz
+    if beta:
+        opt.beta = beta
+        
+    path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_nz_{opt.nz}_ngf_{opt.ngf}_beta_{opt.beta:.1f}_epoch_200.pth'
+    path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_nz_{opt.nz}_ngf_{opt.ngf}_beta_{opt.beta:.1f}_epoch_200.pth'
+        
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netG = DVAE.DCGAN_G(opt.imageSize, opt.nz, opt.nc, opt.ngf, opt.ngpu)
-    state_G = torch.load(opt.state_G, map_location=device)
+    state_G = torch.load(path_G, map_location=device)
     netG.load_state_dict(state_G)
     netE = DVAE.Encoder(opt.imageSize, opt.nz, opt.nc, opt.ngf, opt.ngpu)
-    state_E = torch.load(opt.state_E, map_location=device)
+    state_E = torch.load(path_E, map_location=device)
     netE.load_state_dict(state_E)
     netG.to(device)
     netE.to(device)
