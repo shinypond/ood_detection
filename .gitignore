@@ -1,5 +1,5 @@
-data/
-saved_models/
+data/*
+saved_models/*
 **/.ipynb_checkpoints
 **/__pycache__
 **/*.py~
