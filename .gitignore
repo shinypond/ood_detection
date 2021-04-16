@@ -2,3 +2,5 @@ data/
 saved_models/
 **/.ipynb_checkpoints
 **/__pycache__
+**/*.py~
+**/*.un~
