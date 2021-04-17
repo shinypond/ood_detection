@@ -1,6 +1,7 @@
 import argparse
 import random
 import numpy as np
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -17,6 +18,17 @@ parent_path = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
 sys.path.append(os.path.join(parent_path, 'core'))
 import DCGAN_VAE_pixel as DVAE
 
+def plot_loss(dataset_name, history, epoch):
+    
+    x = range(len(history))
+    y = np.array(history)
+    fig = plt.figure(figsize=(16, 9))
+    plt.plot(x, y, label='total loss')
+    plt.grid()
+    plt.legend()
+    fig.savefig(f'./{dataset_name}_loss_graph_epoch_{epoch}.png')
+    
+
 def KL_div(mu,logvar,reduction = 'avg'):
     mu = mu.view(mu.size(0),mu.size(1))
     logvar = logvar.view(logvar.size(0), logvar.size(1))
@@ -26,13 +38,13 @@ def KL_div(mu,logvar,reduction = 'avg'):
         KL = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(),1) 
         return KL
 
-def perturb(x, mu,device):
-    b,c,h,w = x.size()
-    mask = torch.rand(b,c,h,w)<mu
+def perturb(x, mu, device):
+    b, c, h, w = x.size()
+    mask = torch.rand(b, c, h, w) < mu
     mask = mask.float().to(device)
     noise = torch.FloatTensor(x.size()).random_(0, 256).to(device)
-    x = x*255
-    perturbed_x = ((1-mask)*x + mask*noise)/255.
+    x = x * 255
+    perturbed_x = ((1 - mask) * x + mask * noise)/255.
     return perturbed_x
 
 if __name__=="__main__":
@@ -46,7 +58,7 @@ if __name__=="__main__":
     parser.add_argument('--nz', type=int, default=100, help='size of the latent z vector')
     parser.add_argument('--ngf', type=int, default=64, help = 'hidden channel sieze')
     parser.add_argument('--niter', type=int, default=200, help='number of epochs to train for')
-    parser.add_argument('--lr', type=float, default=5e-4, help='learning rate')
+    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
     
     parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.9')
     parser.add_argument('--beta', type=float, default=1., help='beta for beta-vae')
@@ -76,6 +88,7 @@ if __name__=="__main__":
     
     if ans == '1':
         opt.nc = 3
+        opt.train_dist = 'cifar10'
         experiment = '../../saved_models/VAE_cifar10'
         dataset = dset.CIFAR10(
             root=opt.dataroot,
@@ -94,6 +107,7 @@ if __name__=="__main__":
         )
     elif ans == '2':
         opt.nc = 1
+        opt.train_dist = 'fmnist'
         experiment = '../../saved_models/VAE_fmnist'
         dataset = dset.FashionMNIST(
             root=opt.dataroot,
@@ -151,8 +165,8 @@ if __name__=="__main__":
     
     optimizer1 = optim.Adam(netE.parameters(), lr=opt.lr, weight_decay=3e-5)
     optimizer2 = optim.Adam(netG.parameters(), lr=opt.lr, weight_decay=3e-5)
-    scheduler1 = optim.lr_scheduler.StepLR(optimizer1, step_size=10, gamma=0.5)
-    scheduler2 = optim.lr_scheduler.StepLR(optimizer2, step_size=10, gamma=0.5)
+    scheduler1 = optim.lr_scheduler.StepLR(optimizer1, step_size=30, gamma=0.5)
+    scheduler2 = optim.lr_scheduler.StepLR(optimizer2, step_size=30, gamma=0.5)
 
     netE.train()
     netG.train()
@@ -160,8 +174,9 @@ if __name__=="__main__":
     loss_fn = nn.CrossEntropyLoss(reduction = 'none')
     rec_l = []
     kl = []
-    tloss = []
+    history = []
     for epoch in range(opt.niter):
+        mean_loss = 0.0
         for i, (x, _) in enumerate(dataloader):
             x = x.to(device)
             if opt.perturbed:
@@ -178,7 +193,7 @@ if __name__=="__main__":
             recl = torch.sum(recl) / b
             kld = KL_div(mu,logvar)
             
-            loss =  recl + opt.beta*kld.mean()
+            loss = recl + opt.beta*kld.mean()
             
                 
             optimizer1.zero_grad()
@@ -191,18 +206,23 @@ if __name__=="__main__":
             optimizer2.step()
             rec_l.append(recl.detach().item())
             kl.append(kld.mean().detach().item())
-            tloss.append(loss.detach().item())
-           
+            #tloss.append(loss.detach().item())
+            mean_loss = (mean_loss * i + loss.detach().item()) / (i + 1)
+        
             if not i % 100:
                 print(f'epoch:{epoch} recon:{np.mean(rec_l):.6f} kl:{np.mean(kl):.6f}')
                 
         scheduler1.step()
         scheduler2.step()
+        history.append(mean_loss)
                 
         if epoch % 50 == 0 and epoch > 0:
             torch.save(netG.state_dict(), experiment + f'/netG_pixel_nz_{nz}_ngf_{ngf}_beta_{beta}_epoch_{epoch}.pth')
             torch.save(netE.state_dict(), experiment + f'/netE_pixel_nz_{nz}_ngf_{ngf}_beta_{beta}_epoch_{epoch}.pth')
+            #plot_loss(opt.train_dist, history, epoch)
             
     torch.save(netG.state_dict(), experiment + f'/netG_pixel_nz_{nz}_ngf_{ngf}_beta_{beta}_epoch_{opt.niter}.pth')
     torch.save(netE.state_dict(), experiment + f'/netE_pixel_nz_{nz}_ngf_{ngf}_beta_{beta}_epoch_{opt.niter}.pth')
+    #plot_loss(opt.train_dist, history, opt.niter)
     
+
