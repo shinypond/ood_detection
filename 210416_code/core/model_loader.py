@@ -1,7 +1,9 @@
 import torch
 import DCGAN_VAE_pixel as DVAE
 import config
-from glow.model import Glow
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)) + '/train')
+from train_GLOW.model import Glow
 
 def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, epoch=None):
     
@@ -53,20 +55,22 @@ def load_pretrained_GLOW(option='cifar10'):
     num_classes = 10
     device = torch.device('cuda')
 
-    model = Glow(image_shape,
-                 opt.hidden_channels,
-                 opt.K,
-                 opt.L,
-                 opt.actnorm_scale,
-                 opt.flow_permutation,
-                 opt.flow_coupling,
-                 opt.LU_decomposed,
-                 num_classes,
-                 opt.learn_top,
-                 opt.y_condition,
-                )
+    model = Glow(
+        image_shape,
+        opt.hidden_channels,
+        opt.K,
+        opt.L,
+        opt.actnorm_scale,
+        opt.flow_permutation,
+        opt.flow_coupling,
+        opt.LU_decomposed,
+        num_classes,
+        opt.learn_top,
+        opt.y_condition,
+    )
 
-    model.load_state_dict(torch.load(opt.saved_model))
+    model_path = f'{opt.modelroot}/GLOW_{option}/glow_{option}.pt'
+    model.load_state_dict(torch.load(model_path))
     model.set_actnorm_init()
     model = model.to(device)
     model = model.eval()

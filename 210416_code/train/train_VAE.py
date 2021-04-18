@@ -2,6 +2,7 @@ import argparse
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -175,6 +176,7 @@ if __name__=="__main__":
     rec_l = []
     kl = []
     history = []
+    start = datetime.today()
     for epoch in range(opt.niter):
         mean_loss = 0.0
         for i, (x, _) in enumerate(dataloader):
@@ -215,6 +217,9 @@ if __name__=="__main__":
         scheduler1.step()
         scheduler2.step()
         history.append(mean_loss)
+        now = datetime.today()
+        print(f'\nNOW : {now:%Y-%m-%d %H:%M:%S}, Elapsed Time : {now - start}\n')
+        
                 
         if epoch % 50 == 0 and epoch > 0:
             torch.save(netG.state_dict(), experiment + f'/netG_pixel_nz_{nz}_ngf_{ngf}_beta_{beta}_epoch_{epoch}.pth')

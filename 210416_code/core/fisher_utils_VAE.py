@@ -19,14 +19,15 @@ def _Noise(x, sigma):
     return x + noise
 
 
-def Calculate_fisher_VAE(netE,
-                         netG,
-                         dataloader,
-                         dicts,
-                         opt,
-                         max_iter,
-                         loss_type='ELBO',
-                         noise=0.02):
+def Calculate_fisher_VAE(
+    netE,
+    netG,
+    dataloader,
+    dicts,
+    opt,
+    max_iter,
+    loss_type='ELBO',
+    noise=0.02):
     
     """ netE, netG : Encoder, Decoder of trained VAE """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
@@ -122,17 +123,18 @@ def Calculate_fisher_VAE(netE,
     return Fisher_inv, normalize_factor, entry_want2see
 
 
-def Calculate_score_VAE(netE,
-                        netG,
-                        dataloader,
-                        dicts,
-                        opt,
-                        Fisher_inv,
-                        normalize_factor,
-                        entry_want2see,
-                        max_iter,
-                        loss_type='ELBO',
-                        noise=0.02):
+def Calculate_score_VAE(
+    netE,
+    netG,
+    dataloader,
+    dicts,
+    opt,
+    Fisher_inv,
+    normalize_factor,
+    entry_want2see,
+    max_iter,
+    loss_type='ELBO',
+    noise=0.02):
     
     """ netE, netG : Encoder, Decoder of trained VAE """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
