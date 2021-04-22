@@ -1,3 +1,4 @@
+old/*
 data/*
 !data/README.txt
 saved_models/GLOW_cifar10/*

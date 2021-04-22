@@ -245,6 +245,7 @@ def AUTO_VAE_CIFAR(netE, netG, dicts, max_iter=[1000, 500], loss_type='ELBO', de
         TRAIN_loader(
             option=opt.train_dist,
             is_glow=False,
+            augment=True,
         ),
         dicts,
         opt=opt,

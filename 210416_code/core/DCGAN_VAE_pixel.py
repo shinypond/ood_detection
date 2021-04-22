@@ -26,6 +26,8 @@ class Encoder(nn.Module):
             main.add_module('pyramid:{0}:relu'.format(ngf * 2**(i+1)), nn.ReLU(True))
         self.conv1 = nn.Conv2d(ngf * 2**(n-3), nz, 4)
         self.conv2 = nn.Conv2d(ngf * 2**(n-3), nz, 4)
+        #self.oneconv = nn.Conv2d()
+        
         self.main = main
     def reparametrize(self,mu, logvar):
         std = logvar.div(2).exp()
