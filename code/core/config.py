@@ -29,7 +29,6 @@ class VAE_cifar10:
     train_batchsize = 1
     num_samples = 20
     
-    
 class VAE_fmnist:
     train_dist = 'fmnist'
     ood_list = ['fmnist',
