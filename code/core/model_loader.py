@@ -2,7 +2,6 @@ import torch
 import train_VAE.DCGAN_VAE_pixel as DVAE
 import config
 import os, sys
-sys.path.append(os.path.dirname(os.path.dirname(__file__)) + '/train')
 from train_GLOW.model import Glow
 
 def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, epoch=None):
@@ -24,8 +23,8 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, epoch=No
     if beta:
         opt.beta = beta
         
-    path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_nz_{opt.nz}_ngf_{opt.ngf}_beta_{opt.beta:.1f}_epoch_200.pth'
-    path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_nz_{opt.nz}_ngf_{opt.ngf}_beta_{opt.beta:.1f}_epoch_200.pth'
+    path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_None.pth'
+    path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_None.pth'
         
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netG = DVAE.DCGAN_G(opt.imageSize, opt.nz, opt.nc, opt.ngf, opt.ngpu)
