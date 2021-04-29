@@ -16,14 +16,14 @@ def Calculate_fisher_VAE(
     netE,
     netG,
     dataloader,
-    dicts,
+    params,
     opt,
     max_iter,
     loss_type='ELBO',):
     
     """ netE, netG : Encoder, Decoder of trained VAE """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
-    """ dicts : Which LAYERs do you want to see for calculating Fisher ? """
+    """ params : Which LAYERs do you want to see for calculating Fisher ? """
     """ opt : Refer to config.py """
     """ max_iter : When do you want to stop to calculate Fisher ? """
     """ loss_type : There are two options """
@@ -93,7 +93,7 @@ def Calculate_fisher_VAE(
         ####################################
         grads = {}
         count += 1
-        for param in dicts:
+        for param in params:
             grads[param] = []
             for j in range(param.grad.shape[0]):
                 grads[param].append(param.grad[j, :, :, :].view(-1, 1))
@@ -121,9 +121,8 @@ def Calculate_fisher_VAE(
     ################################
         
     normalize_factor = {}
-    for param in dicts:
+    for param in params:
         Fisher_inv[param] *= count
-        
         normalize_factor[param] = 2 * np.sqrt(np.array(Fisher_inv[param].shape).prod())
         
     """ 
@@ -139,7 +138,7 @@ def Calculate_score_VAE(
     netE,
     netG,
     dataloader,
-    dicts,
+    params,
     opt,
     Fisher_inv,
     normalize_factor,
@@ -148,7 +147,7 @@ def Calculate_score_VAE(
     
     """ netE, netG : Encoder, Decoder of trained VAE """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
-    """ dicts : Which LAYERs do you want to see for calculating Fisher ? """
+    """ params : Which LAYERs do you want to see for calculating Fisher ? """
     """ opt : Refer to config.py """
     """ Fisher_inv, normalize_factor : Outputs from the function 'Calculate_fisher_VAE' """
     """ max_iter : When do you want to stop to calculate Fisher ? """
@@ -221,7 +220,7 @@ def Calculate_score_VAE(
         #######################
         
         grads = {}
-        for param in dicts:
+        for param in params:
             grads[param] = []
             for j in range(param.grad.shape[0]):
                 grads[param].append(param.grad[j, :, :, :].view(-1, 1)) # 1 x 4096
@@ -247,7 +246,7 @@ def Calculate_score_VAE(
     ##### Normalize Score #####
     ###########################
     
-    for param in dicts:
+    for param in params:
         score[param] = np.array(score[param]) / normalize_factor[param]
     
     #score['mu'] = np.array(score['mu']) / normalize_factor['mu']
@@ -255,7 +254,7 @@ def Calculate_score_VAE(
     return score
 
 
-def AUTO_VAE_CIFAR(netE, netG, dicts, max_iter=[1000, 500], loss_type='ELBO', device='cuda:0'):
+def AUTO_VAE_CIFAR(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', device='cuda:0'):
     
     """ Automated for convenience ! """
     """ loss_type : SHOULD BE 'ELBO' or 'exact' """
@@ -272,7 +271,7 @@ def AUTO_VAE_CIFAR(netE, netG, dicts, max_iter=[1000, 500], loss_type='ELBO', de
             option=opt.train_dist,
             is_glow=False,
         ),
-        dicts,
+        params,
         opt=opt,
         max_iter=max_iter1,
         loss_type=loss_type,
@@ -288,7 +287,7 @@ def AUTO_VAE_CIFAR(netE, netG, dicts, max_iter=[1000, 500], loss_type='ELBO', de
                 shuffle=True,
                 is_glow=False,
             ),
-            dicts,
+            params,
             opt,
             Fisher_inv,
             normalize_factor,
@@ -299,7 +298,7 @@ def AUTO_VAE_CIFAR(netE, netG, dicts, max_iter=[1000, 500], loss_type='ELBO', de
     return Fisher_inv, normalize_factor, Gradients
 
 
-def AUTO_VAE_FMNIST(netE, netG, dicts, max_iter=[1000, 500], loss_type='ELBO', device='cuda:0'):
+def AUTO_VAE_FMNIST(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', device='cuda:0'):
 
     """ Automated for convenience ! """
     """ loss_type : SHOULD BE 'ELBO' or 'exact' """
@@ -316,7 +315,7 @@ def AUTO_VAE_FMNIST(netE, netG, dicts, max_iter=[1000, 500], loss_type='ELBO', d
             option=opt.train_dist,
             is_glow=False
         ),
-        dicts,
+        params,
         opt=opt,
         max_iter=max_iter1,
         loss_type=loss_type,
@@ -332,7 +331,7 @@ def AUTO_VAE_FMNIST(netE, netG, dicts, max_iter=[1000, 500], loss_type='ELBO', d
                 shuffle=True,
                 is_glow=False,
             ),
-            dicts,
+            params,
             opt,
             Fisher_inv,
             normalize_factor,

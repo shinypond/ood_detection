@@ -24,9 +24,7 @@ def plot_hist(*args, bins=[100, 100], labels=['cifar10', 'svhn'], xlim=[0, 10]):
     plt.legend()
     plt.show()
 
-def AUROC(*args, labels=['cifar10', 'svhn']):    
-    
-    fig = plt.figure(figsize=(12, 9))
+def AUROC(*args, labels=['cifar10', 'svhn'], verbose=True):    
     
     in_dist_Grads = args[0]
     out_dist_Grads = args[1]
@@ -37,10 +35,12 @@ def AUROC(*args, labels=['cifar10', 'svhn']):
     fpr, tpr, thresholds = metrics.roc_curve(label, combined, pos_label=0)
     #plot_roc_curve(fpr, tpr)
     rocauc = metrics.auc(fpr, tpr)
-    title = f'In-dist : {labels[0]}  /  Out-dist : {labels[1]} \n AUC for Gradient Norm is: {rocauc:.6f}'
-    plt.plot(fpr, tpr)
-    plt.title(title)
-    plt.grid(True)
-    plt.show()
+    if verbose:
+        title = f'In-dist : {labels[0]}  /  Out-dist : {labels[1]} \n AUC for Gradient Norm is: {rocauc:.6f}'
+        fig = plt.figure(figsize=(12, 9))
+        plt.plot(fpr, tpr)
+        plt.title(title)
+        plt.grid(True)
+        plt.show()
     
     return rocauc

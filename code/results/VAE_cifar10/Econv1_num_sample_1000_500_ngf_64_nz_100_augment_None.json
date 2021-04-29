@@ -1,0 +1,1 @@
+{"cifar10": 0.5, "svhn": 0.849244, "celeba": 0.816932, "lsun": 0.616844, "cifar100": 0.566144, "mnist": 0.9971, "fmnist": 0.987972, "kmnist": 0.99566, "omniglot": 0.999112, "notmnist": 0.996104, "trafficsign": 0.591376, "noise": 0.1299, "constant": 0.974024}

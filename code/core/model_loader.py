@@ -4,7 +4,7 @@ import config
 import os, sys
 from train_GLOW.model import Glow
 
-def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, epoch=None):
+def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=None):
     
     """ Load the pre-trained VAE model (for CIFAR10, FMNIST) """
     """ option : 'cifar10' or 'fmnist' is available !! """
@@ -22,9 +22,12 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, epoch=No
         opt.nz = nz
     if beta:
         opt.beta = beta
+    
+    if augment == None:
+        augment = 'None'
         
-    path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_None.pth'
-    path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_None.pth'
+    path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
+    path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
         
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netG = DVAE.DCGAN_G(opt.imageSize, opt.nz, opt.nc, opt.ngf, opt.ngpu)
