@@ -335,7 +335,8 @@ def test_loader_lsun(opt, preprocess, batch_size, shuffle):
             return img
 
     transform = transforms.Compose([
-        transforms.Resize((opt.imageSize, opt.imageSize)),
+        transforms.Resize(opt.imageSize), # Then the size will be H x 32 or 32 x W (32 is smaller)
+        transforms.CenterCrop(opt.imageSize),
         transforms.ToTensor(),
     ] + preprocess)
 
