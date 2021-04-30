@@ -315,7 +315,7 @@ def test_loader_lsun(opt, preprocess, batch_size, shuffle):
     if opt.nc == 1:
         preprocess += [rgb_to_gray]
     class LSUN(data.Dataset):
-        def __init__(self, db_path, categories=['bedroom', 'kitchen'], transform=None):
+        def __init__(self, db_path, categories=['bedroom', 'bridge', 'church_outdoor', 'classroom', 'conference_room', 'dining_room', 'kitchen', 'living_room', 'restaurant', 'tower'], transform=None):
             super(LSUN, self).__init__()
             self.total_path = []
             for i in range(len(categories)):

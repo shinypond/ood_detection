@@ -99,7 +99,7 @@ def Calculate_fisher_VAE(
                 grads[param].append(param.grad[j, :, :, :].view(-1, 1))
             grads[param] = torch.cat(grads[param], dim=1).T.to(device) # 200 x 4096
             # try
-            grads[param] = grads[param].reshape(grads[param].shape[0] * 16, -1) # 6400 x 128
+            grads[param] = grads[param].reshape(grads[param].shape[0] * 128, -1) # 6400 x 128
             
             if i == 0:
                 Fisher_inv[param] = 1000 * torch.diag(torch.ones(grads[param].shape[1])).unsqueeze(0).to(device)
@@ -227,7 +227,7 @@ def Calculate_score_VAE(
             grads[param] = torch.cat(grads[param], dim=1).T.to(device) # 200 x 4096
             
             # This is to prevent CUDA Memory Explosion!
-            grads[param] = grads[param].reshape(grads[param].shape[0] * 16, -1)
+            grads[param] = grads[param].reshape(grads[param].shape[0] * 128, -1)
             
             u1 = grads[param].unsqueeze(1)
             u2 = grads[param].unsqueeze(2)

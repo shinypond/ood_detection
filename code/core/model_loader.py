@@ -26,8 +26,10 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
     if augment == None:
         augment = 'None'
         
-    path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
-    path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
+    #path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
+    #path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
+    path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf{opt.ngf}nz{opt.nz}beta{opt.beta*10:2d}.pth'
+    path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf{opt.ngf}nz{opt.nz}beta{opt.beta*10:2d}.pth'
         
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netG = DVAE.DCGAN_G(opt.imageSize, opt.nz, opt.nc, opt.ngf, opt.ngpu)
