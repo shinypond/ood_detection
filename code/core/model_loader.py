@@ -1,5 +1,6 @@
 import torch
-import train_VAE.DCGAN_VAE_pixel as DVAE
+import train_VAE.DCGAN_VAE_pixel as DVAE_pixel
+import train_VAE.DCGAN_VAE_rgb as DVAE_rgb
 import config
 import os, sys
 from train_GLOW.model import Glow
@@ -26,16 +27,23 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
     if augment == None:
         augment = 'None'
         
+    # Trained by Chang-yeon
     #path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
     #path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
-    path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf{opt.ngf}nz{opt.nz}beta{opt.beta*10:2d}.pth'
-    path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf{opt.ngf}nz{opt.nz}beta{opt.beta*10:2d}.pth'
+    # Trained by Jae-moo
+    #path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf{opt.ngf}nz{opt.nz}beta{opt.beta*10:2d}.pth'
+    #path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf{opt.ngf}nz{opt.nz}beta{opt.beta*10:2d}.pth'
+    
+    # step_lr scheduling (start from 1e-3, gamma 0.5 for every epoch 30) + augment hflip
+    path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_nz_200_ngf_64_beta_1.0_epoch_200.pth'
+    path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_nz_200_ngf_64_beta_1.0_epoch_200.pth'
+    
         
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    netG = DVAE.DCGAN_G(opt.imageSize, opt.nz, opt.nc, opt.ngf, opt.ngpu)
+    netG = DVAE_pixel.DCGAN_G(opt.imageSize, opt.nz, opt.nc, opt.ngf, opt.ngpu)
     state_G = torch.load(path_G, map_location=device)
     netG.load_state_dict(state_G)
-    netE = DVAE.Encoder(opt.imageSize, opt.nz, opt.nc, opt.ngf, opt.ngpu)
+    netE = DVAE_pixel.Encoder(opt.imageSize, opt.nz, opt.nc, opt.ngf, opt.ngpu)
     state_E = torch.load(path_E, map_location=device)
     netE.load_state_dict(state_E)
     netG.to(device)

@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 
-from custom_loss import VAE_loss, loglikelihood
+from custom_loss import VAE_loss_pixel, VAE_loss_rgb, loglikelihood
 import config
 from data_loader import TRAIN_loader, TEST_loader
 
@@ -19,7 +19,8 @@ def Calculate_fisher_VAE(
     params,
     opt,
     max_iter,
-    loss_type='ELBO',):
+    loss_type='ELBO_pixel',
+    method='SMW',):
     
     """ netE, netG : Encoder, Decoder of trained VAE """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
@@ -29,7 +30,9 @@ def Calculate_fisher_VAE(
     """ loss_type : There are two options """
     """     (1) 'ELBO' (traditional VAE loss) """
     """     (2) 'exact' (exact LogLikelihood for VAE ; Jae-moo Choi's NEW(?) viewpoint)"""
-    """ noise : perturb input tensor with a small noise ! """
+    """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
+    
+    assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
     
     if opt.ngpu:
         device = 'cuda:0'
@@ -63,74 +66,89 @@ def Calculate_fisher_VAE(
         
         recon = recon.contiguous()
         
-        if loss_type == 'ELBO':
-            loss = VAE_loss(x, [recon, mu, logvar])
+        if loss_type == 'ELBO_pixel':
+            loss = VAE_loss_pixel(x, [recon, mu, logvar])
+        elif loss_type == 'ELBO_rgb':
+            loss = VAE_loss_rgb(x, [recon, mu, logvar])
         elif loss_type == 'exact':
             loss = loglikelihood(x, z, [recon, mu, logvar])
+        else:
+            raise ValueError
             
         loss.backward(retain_graph=True)
-        
         """
         #########################
         ##### Use mu_grad ! #####
         #########################
-        
-        grad = torch.mean(mu.grad, dim=0, keepdim=False).squeeze(-1)
-        count += 1
-        if i == 0:
-            Fisher_inv['mu'] = 1000 * torch.diag(torch.ones(grad.shape[0])).to(device)
-        b = torch.mm(Fisher_inv['mu'], grad)
-        denom = 1 + torch.mm(grad.T, b)    
-        numer = torch.mm(b, b.T)
-        Fisher_inv['mu'] -= numer / denom
-        
-        if i >= max_iter - 1:
-            break
-        
-        """
-        ####################################
-        ##### Calculate Fisher Inverse #####
-        ####################################
-        grads = {}
-        count += 1
-        for param in params:
-            grads[param] = []
-            for j in range(param.grad.shape[0]):
-                grads[param].append(param.grad[j, :, :, :].view(-1, 1))
-            grads[param] = torch.cat(grads[param], dim=1).T.to(device) # 200 x 4096
-            # try
-            grads[param] = grads[param].reshape(grads[param].shape[0] * 128, -1) # 6400 x 128
-            
+
+            grad = torch.mean(mu.grad, dim=0, keepdim=False).squeeze(-1)
+            count += 1
             if i == 0:
-                Fisher_inv[param] = 1000 * torch.diag(torch.ones(grads[param].shape[1])).unsqueeze(0).to(device)
-                Fisher_inv[param] = Fisher_inv[param].repeat(grads[param].shape[0], 1, 1)
-                
-            u1 = grads[param].unsqueeze(1)
-            u2 = grads[param].unsqueeze(2)
-            b = torch.bmm(Fisher_inv[param], u2)
-            denom = torch.ones(grads[param].shape[0], 1).to(device) + torch.bmm(u1, b).squeeze(2)
-            denom = denom.unsqueeze(2)
-            numer = torch.bmm(b, b.permute(0, 2, 1))
-            Fisher_inv[param] -= numer / denom
-        
+                Fisher_inv['mu'] = 1000 * torch.diag(torch.ones(grad.shape[0])).to(device)
+            b = torch.mm(Fisher_inv['mu'], grad)
+            denom = 1 + torch.mm(grad.T, b)    
+            numer = torch.mm(b, b.T)
+            Fisher_inv['mu'] -= numer / denom
+
+            if i >= max_iter - 1:
+                break
+
+        normalize_factor = {}
+        Fisher_inv['mu'] *= count
+        normalize_factor['mu'] = 2 * np.sqrt(np.array(Fisher_inv['mu'].shape).prod())
+        """
+        ###########################################
+        ##### Calculate Fisher Inverse by SMW #####
+        ###########################################
+        if method == 'SMW':
+            grads = {}
+            count += 1
+            for pname, param in params.items():
+                grads[pname] = []
+                for j in range(param.grad.shape[0]):
+                    grads[pname].append(param.grad[j, :, :, :].view(-1, 1))
+                grads[pname] = torch.cat(grads[pname], dim=1).T.to(device) # 200 x 4096
+                grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 64, -1) # (200 x 64) x (4096 / 64)
+
+                if i == 0:
+                    Fisher_inv[pname] = 100 * torch.diag(torch.ones(grads[pname].shape[1])).unsqueeze(0).to(device)
+                    Fisher_inv[pname] = Fisher_inv[pname].repeat(grads[pname].shape[0], 1, 1)
+
+                u1 = grads[pname].unsqueeze(1)
+                u2 = grads[pname].unsqueeze(2)
+                b = torch.bmm(Fisher_inv[pname], u2)
+                denom = torch.ones(grads[pname].shape[0], 1).to(device) + torch.bmm(u1, b).squeeze(2)
+                denom = denom.unsqueeze(2)
+                numer = torch.bmm(b, b.permute(0, 2, 1))
+                Fisher_inv[pname] -= numer / denom
+
+        elif method == 'Vanilla':
+            grads = {}
+            for pname, param in params.items():
+                grads[pname] = param.grad.view(-1) ** 2
+
+                if i == 0:
+                    Fisher_inv[pname] = grads[pname]
+                else:
+                    Fisher_inv[pname] = (i * Fisher_inv[pname] + grads[pname]) / (i + 1)
+                    
         if i >= max_iter - 1:
             break
         
-    ################################
-    ##### Normalize Fisher_inv #####
-    ################################
+    if method == 'SMW':
+        normalize_factor = {}
+        for pname, _ in params.items():
+            Fisher_inv[pname] *= count
+            normalize_factor[pname] = 2 * np.sqrt(np.array(Fisher_inv[pname].shape).prod())
+            
+    elif method == 'Vanilla':
+        normalize_factor = {}
+        for pname, _ in params.items():
+            Fisher_inv[pname] = torch.sqrt(Fisher_inv[pname])
+            Fisher_inv[pname] = Fisher_inv[pname] * (Fisher_inv[pname] > 1e-8)
+            Fisher_inv[pname][Fisher_inv[pname]==0] = 1e-8
+            normalize_factor[pname] = 2 * np.sqrt(len(Fisher_inv[pname]))
         
-    normalize_factor = {}
-    for param in params:
-        Fisher_inv[param] *= count
-        normalize_factor[param] = 2 * np.sqrt(np.array(Fisher_inv[param].shape).prod())
-        
-    """ 
-    normalize_factor = {}
-    Fisher_inv['mu'] *= count
-    normalize_factor['mu'] = 2 * np.sqrt(np.array(Fisher_inv['mu'].shape).prod())
-    """
-                
     return Fisher_inv, normalize_factor
 
 
@@ -143,7 +161,8 @@ def Calculate_score_VAE(
     Fisher_inv,
     normalize_factor,
     max_iter,
-    loss_type='ELBO',):
+    loss_type='ELBO_pixel',
+    method='SMW',):
     
     """ netE, netG : Encoder, Decoder of trained VAE """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
@@ -154,7 +173,9 @@ def Calculate_score_VAE(
     """ loss_type : There are two options """
     """     (1) 'ELBO' (traditional VAE loss) """
     """     (2) 'exact' (exact LogLikelihood for VAE ; Jae-moo Choi's NEW(?) viewpoint)"""
-    """ noise : perturb input tensor with a small noise ! """
+    """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
+    
+    assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
     
     if opt.ngpu:
         device = 'cuda:0'
@@ -193,68 +214,74 @@ def Calculate_score_VAE(
             
         recon = recon.contiguous()
         
-        if loss_type == 'ELBO':
-            loss = VAE_loss(x, [recon, mu, logvar])
+        if loss_type == 'ELBO_pixel':
+            loss = VAE_loss_pixel(x, [recon, mu, logvar])
+        elif loss_type == 'ELBO_rgb':
+            loss = VAE_loss_rgb(x, [recon, mu, logvar])
         elif loss_type == 'exact':
             loss = loglikelihood(x, z, [recon, mu, logvar])
+        else:
+            raise ValueError
             
         loss.backward(retain_graph=True)
         
+        #####################################
+        ##### Get Fisher Score ! by SMW #####
+        #####################################
+
+        if method == 'SMW':
+            grads = {}
+            for pname, param in params:
+                grads[pname] = []
+                for j in range(param.grad.shape[0]):
+                    grads[pname].append(param.grad[j, :, :, :].view(-1, 1)) # 4096 x 1
+                grads[pname] = torch.cat(grads[pname], dim=1).T.to(device) # 200 x 4096
+                grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 64, -1) # (200 x 64) x (4096 / 64)
+                u1 = grads[pname].unsqueeze(1)
+                u2 = grads[pname].unsqueeze(2)
+                s = torch.bmm(torch.bmm(u1, Fisher_inv[pname]), u2)
+                s = s.squeeze(1).squeeze(1)
+                s = torch.sum(s).detach().cpu().numpy()
+                if i == 0:
+                    score[pname] = []
+                score[pname].append(s)
+                
+        elif method == 'Vanilla':
+            grads = {}
+            for pname, param in params.items():
+                grads[pname] = param.grad.view(-1) ** 2
+                s = torch.norm(grads[pname] / Fisher_inv[pname])
+                if i == 0:
+                    score[pname] = []
+                score[pname].append(s.detach().cpu().numpy())
+                
+        if i >= max_iter - 1:
+            break
+            
+    for pname, _ in params.items():
+        score[pname] = np.array(score[pname]) / normalize_factor[pname]
+            
+            
         """
         #########################
         ##### Use mu.grad ! #####
         #########################
-        
-        grad = torch.mean(mu.grad, dim=0, keepdim=False).squeeze(-1)
-        s = torch.mm(torch.mm(grad.T, Fisher_inv['mu']), grad).squeeze(-1).squeeze(-1)
-        if i == 0:
-            score['mu'] = []
-        score['mu'].append(s.detach().cpu().numpy())
-    
-        if i >= max_iter - 1:
-            break
-    
-        """
-        #######################
-        ##### Get Score ! #####
-        #######################
-        
-        grads = {}
-        for param in params:
-            grads[param] = []
-            for j in range(param.grad.shape[0]):
-                grads[param].append(param.grad[j, :, :, :].view(-1, 1)) # 1 x 4096
-            grads[param] = torch.cat(grads[param], dim=1).T.to(device) # 200 x 4096
-            
-            # This is to prevent CUDA Memory Explosion!
-            grads[param] = grads[param].reshape(grads[param].shape[0] * 128, -1)
-            
-            u1 = grads[param].unsqueeze(1)
-            u2 = grads[param].unsqueeze(2)
-            
-            s = torch.bmm(torch.bmm(u1, Fisher_inv[param]), u2)
-            s = s.squeeze(1).squeeze(1)
-            s = torch.sum(s).detach().cpu().numpy()
+
+            grad = torch.mean(mu.grad, dim=0, keepdim=False).squeeze(-1)
+            s = torch.mm(torch.mm(grad.T, Fisher_inv['mu']), grad).squeeze(-1).squeeze(-1)
             if i == 0:
-                score[param] = []
-            score[param].append(s)
-            
-        if i >= max_iter - 1:
-            break
-            
-    ###########################
-    ##### Normalize Score #####
-    ###########################
-    
-    for param in params:
-        score[param] = np.array(score[param]) / normalize_factor[param]
-    
-    #score['mu'] = np.array(score['mu']) / normalize_factor['mu']
-        
+                score['mu'] = []
+            score['mu'].append(s.detach().cpu().numpy())
+
+            if i >= max_iter - 1:
+                break
+
+        score['mu'] = np.array(score['mu']) / normalize_factor['mu']
+        """
     return score
 
 
-def AUTO_VAE_CIFAR(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', device='cuda:0'):
+def AUTO_VAE_CIFAR(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', method='SMW', device='cuda:0'):
     
     """ Automated for convenience ! """
     """ loss_type : SHOULD BE 'ELBO' or 'exact' """
@@ -275,6 +302,7 @@ def AUTO_VAE_CIFAR(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', d
         opt=opt,
         max_iter=max_iter1,
         loss_type=loss_type,
+        method=method,
     )
 
     for ood in opt.ood_list:
@@ -293,12 +321,13 @@ def AUTO_VAE_CIFAR(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', d
             normalize_factor,
             max_iter=max_iter2,
             loss_type=loss_type,
+            method=method,
         )
     
     return Fisher_inv, normalize_factor, Gradients
 
 
-def AUTO_VAE_FMNIST(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', device='cuda:0'):
+def AUTO_VAE_FMNIST(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', method='SMW', device='cuda:0'):
 
     """ Automated for convenience ! """
     """ loss_type : SHOULD BE 'ELBO' or 'exact' """
@@ -319,6 +348,7 @@ def AUTO_VAE_FMNIST(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', 
         opt=opt,
         max_iter=max_iter1,
         loss_type=loss_type,
+        method=method,
     )
 
     for ood in opt.ood_list:
@@ -337,6 +367,7 @@ def AUTO_VAE_FMNIST(netE, netG, params, max_iter=[1000, 500], loss_type='ELBO', 
             normalize_factor,
             max_iter=max_iter2,
             loss_type=loss_type,
+            method=method,
         )
     
     return Fisher_inv, normalize_factor, Gradients

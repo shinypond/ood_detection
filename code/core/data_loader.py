@@ -321,7 +321,7 @@ def test_loader_lsun(opt, preprocess, batch_size, shuffle):
             for i in range(len(categories)):
                 self.db_path = db_path + '/' + categories[i] + '_val'
                 elements = os.listdir(self.db_path)
-                self.total_path += [self.db_path + '/' + element for element in elements]
+                self.total_path += [self.db_path + '/' + element for element in elements if element[-4:] == '.jpg']
             self.transform = transform
 
         def __len__(self):

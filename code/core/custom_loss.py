@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-_loss_fn = nn.CrossEntropyLoss(reduction='none')
+_loss_fn_pixel = nn.CrossEntropyLoss(reduction='none')
+_loss_fn_rgb = nn.BCELoss(reduction='sum')
 
 def KL_div(mu, logvar, reduction='avg'):
     mu = mu.view(mu.size(0), mu.size(1))
@@ -12,17 +13,25 @@ def KL_div(mu, logvar, reduction='avg'):
     else:
         return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1) # vector
 
-def VAE_loss(x, output, beta=1):
+def VAE_loss_pixel(x, output, beta=1):
     y, mu, logvar = output
     b = x.size(0)
     target = Variable(x.data.view(-1) * 255).long()
     y = y.contiguous()
     y = y.view(-1, 256)
-    recl = _loss_fn(y, target)
+    recl = _loss_fn_pixel(y, target)
     recl = torch.sum(recl) / b
     kld = KL_div(mu, logvar)
     return recl + beta * kld.mean()
 
+def VAE_loss_rgb(x, output, beta=1):
+    y, mu, logvar = output
+    b = x.size(0)
+    y = y.contiguous()
+    recl = _loss_fn_rgb(y, x) / b
+    kld = KL_div(mu, logvar)
+    return recl + beta * kld.mean()
+    
 def loglikelihood(x, z, kernel_output):
     y, mu, logvar = kernel_output
     b = x.size(0)

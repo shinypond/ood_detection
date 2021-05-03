@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
 
-from custom_loss import KL_div, VAE_loss
+from custom_loss import KL_div
 import config
 from data_loader import TRAIN_loader, TEST_loader
 
