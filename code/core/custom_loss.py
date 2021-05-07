@@ -24,21 +24,13 @@ def VAE_loss_pixel(x, output, beta=1):
     kld = KL_div(mu, logvar)
     return recl + beta * kld.mean()
 
-def VAE_loss_rgb(x, output, beta=1):
-    y, mu, logvar = output
-    b = x.size(0)
-    y = y.contiguous()
-    recl = _loss_fn_rgb(y, x) / b
-    kld = KL_div(mu, logvar)
-    return recl + beta * kld.mean()
-    
 def loglikelihood(x, z, kernel_output):
     y, mu, logvar = kernel_output
     b = x.size(0)
     target = Variable(x.data.view(-1) * 255).long()
     y = y.contiguous()
     y = y.view(-1,256)
-    recl = _loss_fn(y, target)
+    recl = _loss_fn_pixel(y, target)
     recl = recl.view(b,-1)
     var = logvar.exp()
     recl_loglikelihood = -recl.sum(1)

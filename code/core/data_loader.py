@@ -226,12 +226,11 @@ def preprocess_for_glow(x):
     if n_bits < 8:
         x = torch.floor(x / 2 ** (8 - n_bits))
     x = x / n_bins - 0.5
-    if x.size(0) == 1:
-        x = x.repeat((3, 1, 1))
     return x
 
 def rgb_to_gray(x):
-    return torch.mean(x, dim=0, keepdim=True)
+    return transforms.Grayscale(1)(x)
+    #return torch.mean(x, dim=0, keepdim=True)
 
 def gray_to_rgb(x):
     return x.repeat(3, 1, 1)
@@ -335,8 +334,8 @@ def test_loader_lsun(opt, preprocess, batch_size, shuffle):
             return img
 
     transform = transforms.Compose([
-        transforms.Resize(opt.imageSize), # Then the size will be H x 32 or 32 x W (32 is smaller)
-        transforms.CenterCrop(opt.imageSize),
+        transforms.Resize((opt.imageSize, opt.imageSize)), # Then the size will be H x 32 or 32 x W (32 is smaller)
+        #transforms.CenterCrop(opt.imageSize),
         transforms.ToTensor(),
     ] + preprocess)
 

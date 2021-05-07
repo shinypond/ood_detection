@@ -7,15 +7,16 @@ class VAE_cifar10:
                 'svhn',
                 'celeba',
                 'lsun',
-                'cifar100',
-                'mnist',
-                'fmnist',
-                'kmnist',
-                'omniglot',
-                'notmnist',
-                'trafficsign',
-                'noise',
-                'constant']
+                #'cifar100',
+                #'mnist',
+                #'fmnist',
+                #'kmnist',
+                #'omniglot',
+                #'notmnist',
+                #'trafficsign',
+                #'noise',
+                #'constant',
+               ]
     dataroot = '../data'
     modelroot = '../saved_models'
     workers = 2
@@ -58,17 +59,31 @@ class VAE_fmnist:
     
 class GLOW_cifar10:
     train_dist = 'cifar10'
+    ood_list = ['cifar10',
+                'svhn',
+                'celeba',
+                'lsun',
+                #'cifar100',
+                #'mnist',
+                #'fmnist',
+                #'kmnist',
+                #'omniglot',
+                #'notmnist',
+                #'trafficsign',
+                #'noise',
+                #'constant',
+               ]
     dataroot = '../data'
     modelroot = '../saved_models'
     resume_train = False
     download = False
     augment = True
-    train_batchsize = 32
-    eval_batchsize = 512
+    train_batchsize = 1
+    eval_batchsize = 1
     epochs = 250
     seed = 0
-    hidden_channels = 400
-    K = 8
+    hidden_channels = 512
+    K = 32
     L = 3
     actnorm_scale = 1.0
     flow_permutation = "invconv" # invconv, shuffle, reverse
@@ -92,13 +107,25 @@ class GLOW_cifar10:
     
 class GLOW_fmnist:
     train_dist = 'fmnist'
+    ood_list = ['fmnist',
+                #'svhn',
+                #'celeba',
+                #'lsun',
+                #'cifar10',
+                #'cifar100',
+                'mnist',
+                'kmnist',
+                #'omniglot',
+                'notmnist',
+                'noise',
+                'constant']
     dataroot = '../data'
     modelroot = '../saved_models'
     resume_train = False
     download = False
     augment = True
-    train_batchsize = 32
-    eval_batchsize = 512
+    train_batchsize = 1
+    eval_batchsize = 1
     epochs = 250
     seed = 0
     hidden_channels = 200

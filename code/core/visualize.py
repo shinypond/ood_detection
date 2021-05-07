@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
+import pandas as pd
 from sklearn import metrics
 
 def plot_hist(*args, bins=[100, 100], labels=['cifar10', 'svhn'], xlim=[0, 10]):
@@ -44,3 +45,50 @@ def AUROC(*args, labels=['cifar10', 'svhn'], verbose=True):
         plt.show()
     
     return rocauc
+
+def plot_scores_all_layers(train_dist, params, SCOREs, opt, save=True):
+    auroc = {}
+    for pname in params.keys():
+        _auroc = {}
+        for ood in opt.ood_list:
+            args = [
+                SCOREs['VAE'][train_dist][train_dist][pname],
+                SCOREs['VAE'][train_dist][ood][pname],
+            ]
+            labels = [train_dist, ood]
+            _auroc[ood] = AUROC(*args, labels=labels, verbose=False)
+        auroc[pname] = _auroc
+   
+    fig = plt.figure(figsize=(60, 55))
+    plt.subplots_adjust(wspace=0.1)
+    plt.subplots_adjust(hspace=0.2)
+    for i, ood in enumerate(opt.ood_list):
+        df = pd.DataFrame(SCOREs['VAE'][train_dist][ood])
+        df.loc['mean', :] = df.mean()
+        df.loc['std', :] = df.std()
+        df.loc['max', :] = df.max()
+        df.loc['min', :] = df.min()
+        ax = fig.add_subplot(len(opt.ood_list), 3, 3*i+1)
+        ax.set_title(f'{ood}')
+        ax.errorbar(df.columns, df.loc['mean', :], df.loc['std', :], linestyle='None', marker='^', color='g')
+        ax.scatter(df.columns, df.loc['max', :], color='r')
+        ax.scatter(df.columns, df.loc['min', :], color='r')
+        ax.grid()
+    for i, ood in enumerate(opt.ood_list):
+        df = pd.DataFrame(SCOREs['VAE'][train_dist][ood])
+        df.loc['mean', :] = df.mean()
+        ax = fig.add_subplot(len(opt.ood_list), 3, 3*i+2)
+        ax.set_title(f'{ood}')
+        ax.plot(df.columns, df.loc['mean', :])
+        ax.grid()
+    df = pd.DataFrame(auroc)
+    for i, ood in enumerate(opt.ood_list):
+        ax = fig.add_subplot(len(opt.ood_list), 3, 3*i+3)
+        ax.set_title(f'{ood}')
+        ax.plot(df.columns, df.loc[ood, :], color='r')
+        ax.grid()
+
+    if save:
+        fig.savefig('./score_mean_std_auroc.png')
+    
+    plt.show()

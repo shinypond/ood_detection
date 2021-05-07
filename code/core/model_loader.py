@@ -1,6 +1,5 @@
 import torch
 import train_VAE.DCGAN_VAE_pixel as DVAE_pixel
-import train_VAE.DCGAN_VAE_rgb as DVAE_rgb
 import config
 import os, sys
 from train_GLOW.model import Glow
@@ -13,9 +12,10 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
     
     if option == 'cifar10':
         opt = config.VAE_cifar10
-    else:
-        assert option == 'fmnist'
+    elif option == 'fmnist':
         opt = config.VAE_fmnist
+    else:
+        raise ValueError
         
     if ngf:
         opt.ngf = ngf
@@ -35,8 +35,14 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
     #path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf{opt.ngf}nz{opt.nz}beta{opt.beta*10:2d}.pth'
     
     # step_lr scheduling (start from 1e-3, gamma 0.5 for every epoch 30) + augment hflip
-    path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_nz_200_ngf_64_beta_1.0_epoch_200.pth'
-    path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_nz_200_ngf_64_beta_1.0_epoch_200.pth'
+    #path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_64_nz_100_beta_1.0_augment_None.pth'
+    #path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_ngf_64_nz_100_beta_1.0_augment_None.pth'
+    if option == 'cifar10':
+        path_E = f'{opt.modelroot}/VAE_old(schedule30+0.5,hflip)/VAE_cifar10/netE_pixel_nz_200_ngf_64_beta_1.0_epoch_100.pth'
+        path_G = f'{opt.modelroot}/VAE_old(schedule30+0.5,hflip)/VAE_cifar10/netG_pixel_nz_200_ngf_64_beta_1.0_epoch_100.pth'
+    elif option == 'fmnist':
+        path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
+        path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
     
         
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -55,17 +61,18 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
 def load_pretrained_GLOW(option='cifar10'):
     
     """ Load the pre-trained GlOW model (for CIFAR10, FMNIST???) """
-    """ option : 'cifar10' or 'fmnist' (???) is available !! """
+    """ option : 'cifar10' or 'fmnist' is available !! """
     
     if option == 'cifar10':
         opt = config.GLOW_cifar10
-    else:
-        assert option == 'fmnist'
-        opt = config.GLOW_fmnist # 에러날 거
+        image_shape = (32, 32, 3)
+        num_classes = 10
+    elif option == 'fmnist':
+        opt = config.GLOW_fmnist
+        image_shape = (32, 32, 1)
+        num_classes = 10
     
-    image_shape = (32, 32, 3)
-    num_classes = 10
-    device = torch.device('cuda')
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
     model = Glow(
         image_shape,
@@ -80,9 +87,13 @@ def load_pretrained_GLOW(option='cifar10'):
         opt.learn_top,
         opt.y_condition,
     )
-
-    model_path = f'{opt.modelroot}/GLOW_{option}/glow_{option}.pt'
-    model.load_state_dict(torch.load(model_path))
+    
+    model_path = f'{opt.modelroot}/GLOW_{option}/glow_{option}.pt' # trained by BJW
+    model.load_state_dict(torch.load(model_path)['model'])
+    
+    #model_path = f'{opt.modelroot}/GLOW_{option}/glow_affine_coupling.pt' # KINGMA
+    #model.load_state_dict(torch.load(model_path))
+    
     model.set_actnorm_init()
     model = model.to(device)
     model = model.eval()
