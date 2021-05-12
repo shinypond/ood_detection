@@ -154,7 +154,7 @@ class GLOW_fmnist:
 class CNN_fmnist:
     train_dist = 'fmnist'
     ood_list = ['fmnist',
-                #'svhn',
+                'svhn',
                 #'celeba', # Caution! celeba doesn't have any labels.
                 #'lsun',
                 'cifar10',

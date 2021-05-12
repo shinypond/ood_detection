@@ -1,10 +1,11 @@
 import torch
 import train_VAE.DCGAN_VAE_pixel as DVAE_pixel
+from train_CNN.basic_CNN import basic_CNN as CNN
 import config
 import os, sys
 from train_GLOW.model import Glow
 
-def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment='hflip', epoch=200):
+def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment='hflip', epoch=100):
     
     """ Load the pre-trained VAE model (for CIFAR10, FMNIST) """
     """ option : 'cifar10' or 'fmnist' is available !! """
@@ -22,27 +23,6 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
         opt.nz = nz
     if beta:
         opt.beta = beta
-        
-    if option == 'fmnist':
-        epoch = 100
-    
-    # Trained by Chang-yeon
-    #path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
-    #path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
-    # Trained by Jae-moo
-    #path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf{opt.ngf}nz{opt.nz}beta{opt.beta*10:2d}.pth'
-    #path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf{opt.ngf}nz{opt.nz}beta{opt.beta*10:2d}.pth'
-    
-    # step_lr scheduling (start from 1e-3, gamma 0.5 for every epoch 30) + augment hflip
-    #path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_64_nz_100_beta_1.0_augment_None.pth'
-    #path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_ngf_64_nz_100_beta_1.0_augment_None.pth'
-    
-    #if option == 'cifar10':
-    #    path_E = f'{opt.modelroot}/VAE_old(schedule30+0.5,hflip)/VAE_cifar10/netE_pixel_nz_200_ngf_64_beta_1.0_epoch_100.pth'
-    #    path_G = f'{opt.modelroot}/VAE_old(schedule30+0.5,hflip)/VAE_cifar10/netG_pixel_nz_200_ngf_64_beta_1.0_epoch_100.pth'
-    #elif option == 'fmnist':
-    #    path_E = f'{opt.modelroot}/VAE_{option}/netE_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
-    #    path_G = f'{opt.modelroot}/VAE_{option}/netG_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}.pth'
     
     # 21.05.12 Fixed the final models !
     path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
@@ -58,8 +38,8 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
     netE.load_state_dict(state_E)
     netG.to(device)
     netE.to(device)
-    netE.eval()
-    netG.eval()
+    netE = netE.eval()
+    netG = netG.eval()
     return netE, netG
 
 def load_pretrained_GLOW(option='cifar10'):

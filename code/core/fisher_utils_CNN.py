@@ -25,11 +25,7 @@ def Calculate_fisher_CNN(
     
     assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
     
-    if opt.ngpu:
-        device = 'cuda:0'
-    else:
-        device = 'cpu'
-        
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     model.eval()
     optimizer = optim.SGD(model.parameters(), lr=0, momentum=0) # no learning
     loss_ftn = nn.CrossEntropyLoss(reduction='mean')
@@ -94,22 +90,19 @@ def Calculate_score_CNN(
     
     assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
     
-    if opt.ngpu:
-        device = 'cuda:0'
-    else:
-        device = 'cpu'
-        
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     model.eval()
     optimizer = optim.SGD(model.parameters(), lr=0, momentum=0) # no learning
     loss_ftn = nn.CrossEntropyLoss(reduction='mean')
     score = {}
+    temp = 10 # temperature
     
-    for i, (x, y) in enumerate(tqdm(dataloader, desc='Calculate Fisher CNN', unit='step')):
+    for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher CNN', unit='step')):
         optimizer.zero_grad()
         x = x.to(device)
-        y = y.to(device)
         y_pred = model(x)
-        loss = loss_ftn(y_pred, y)
+        y = torch.argmax(y_pred, dim=1)
+        loss = loss_ftn(y_pred / temp, y)
         loss.backward()
         
         if method == 'SMW':

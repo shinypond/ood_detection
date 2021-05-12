@@ -34,11 +34,7 @@ def Calculate_fisher_VAE(
     
     assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
     
-    if opt.ngpu:
-        device = 'cuda:0'
-    else:
-        device = 'cpu'
-
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netE.eval()
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
@@ -147,11 +143,7 @@ def Calculate_score_VAE(
     
     assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
     
-    if opt.ngpu:
-        device = 'cuda:0'
-    else:
-        device = 'cpu'
-        
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netE.eval()
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
