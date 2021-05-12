@@ -59,7 +59,7 @@ def main():
     parser.add_argument('--nz', type=int, default=100, help='size of the latent z vector')
     parser.add_argument('--ngf', type=int, default=64, help = 'hidden channel sieze')
     parser.add_argument('--niter', type=int, default=200, help='number of epochs to train for')
-    parser.add_argument('--lr', type=float, default=5e-4, help='learning rate')
+    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
     
     parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.9')
     parser.add_argument('--beta', type=float, default=1., help='beta for beta-vae')
@@ -183,6 +183,8 @@ def main():
     
     optimizer1 = optim.Adam(netE.parameters(), lr=opt.lr, weight_decay=0)
     optimizer2 = optim.Adam(netG.parameters(), lr=opt.lr, weight_decay=0)
+    scheduler1 = optim.lr_scheduler.StepLR(optimizer1, step_size=30, gamma=0.5)
+    scheduler2 = optim.lr_scheduler.StepLR(optimizer2, step_size=30, gamma=0.5)
 
     netE.train()
     netG.train()
@@ -228,11 +230,13 @@ def main():
                 print(f'epoch:{epoch} recon:{np.mean(rec_l):.6f} kl:{np.mean(kl):.6f}')
         
         history.append(mean_loss)
+        scheduler1.step()
+        scheduler2.step()
         now = datetime.today()
         print(f'\nNOW : {now:%Y-%m-%d %H:%M:%S}, Elapsed Time : {now - start}\n')
             
-    torch.save(netG.state_dict(), experiment + f'/netG_pixel_ngf_{ngf}_nz_{nz}_beta_{beta}_augment_{opt.augment}.pth')
-    torch.save(netE.state_dict(), experiment + f'/netE_pixel_ngf_{ngf}_nz_{nz}_beta_{beta}_augment_{opt.augment}.pth')
+    torch.save(netE.state_dict(), experiment + f'/netE_pixel_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_epoch_{opt.niter}.pth')
+    torch.save(netG.state_dict(), experiment + f'/netG_pixel_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_epoch_{opt.niter}.pth')
     
 
 if __name__=="__main__":

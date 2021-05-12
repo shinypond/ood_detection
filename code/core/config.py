@@ -7,15 +7,15 @@ class VAE_cifar10:
                 'svhn',
                 'celeba',
                 'lsun',
-                #'cifar100',
-                #'mnist',
-                #'fmnist',
-                #'kmnist',
-                #'omniglot',
-                #'notmnist',
+                'cifar100',
+                'mnist',
+                'fmnist',
+                'kmnist',
+                'omniglot',
+                'notmnist',
                 #'trafficsign',
-                #'noise',
-                #'constant',
+                'noise',
+                'constant',
                ]
     dataroot = '../data'
     modelroot = '../saved_models'
@@ -150,6 +150,16 @@ class GLOW_fmnist:
     imageSize = 32
     nc = 1
     
+    
+class CNN_fmnist:
+    dataroot = '../data'
+    modelroot = '../saved_models'
+    workers = 1
+    imageSize = 32
+    nc = 1 # input image channels
+    ngpu = 1
+    #modelpath = '../saved_models/CNN_fmnist/cnn.pth'
+    batch_size = 1
     
     
     

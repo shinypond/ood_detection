@@ -39,6 +39,7 @@ def Calculate_fisher_GLOW(
         nll.backward()
 
         if method == 'SMW':
+            assert 0==1, 'Have not been developed yet,,,'
             grads = {}
             count += 1
             for lname, layer in layers.items():
@@ -53,7 +54,6 @@ def Calculate_fisher_GLOW(
                 
                 print(grads[lname].shape)
                     
-                assert 0==1
                 
                 
                 
@@ -84,7 +84,6 @@ def Calculate_fisher_GLOW(
                 for param in layer.parameters():
                     grads[lname].append(param.grad.view(-1) ** 2)
                 grads[lname] = torch.cat(grads[lname]).to(device)
-                
                 if i == 0:
                     Fisher_inv[lname] = grads[lname]
                 else:
@@ -144,6 +143,7 @@ def Calculate_score_GLOW(
         nll.backward()
         
         if method == 'SMW':
+            assert 0==1, 'Have not been developed yet,,,'
             grads = {}
             for pname, param in params.items():
                 grads[pname] = []
@@ -166,8 +166,7 @@ def Calculate_score_GLOW(
                 for param in layer.parameters(): 
                     grads[lname].append(param.grad.view(-1))
                 grads[lname] = torch.cat(grads[lname])
-                s = torch.norm(grads[lname]).detach().cpu()
-                #s = torch.norm(grads[lname] / Fisher_inv[lname]).detach().cpu()
+                s = torch.norm(grads[lname] / Fisher_inv[lname]).detach().cpu()
                 if i == 0:
                     score[lname] = []
                 score[lname].append(s.numpy())
@@ -180,54 +179,14 @@ def Calculate_score_GLOW(
             
     return score
 
-#####################################################################################
-## will be deprecated ##
-"""
-    
-def Calculate_score_GLOW(model,
-                         dataloader,
-                         dicts,
-                         Grads,
-                         normalize_factor,
-                         max_iter,
-                         with_label=True,
-                         device='cuda:0'):
-    
-    #with_label : If len(dataset[0]) == 2, TRUE. Otherwise, FALSE 
-    
-    optimizer = optim.SGD(model.parameters(), lr=0, momentum=0)
-    score = []
-        
-    for i, x in enumerate(tqdm(dataloader, desc='Calculate Score GLOW', unit='step')):
-        
-        try: # with_label == True (ex : cifar10, svhn and etc.)
-            x, _ = x
-        except: # with_label == False (ex : celeba)
-            pass
-        
-        optimizer.zero_grad()
-        x = x.to(device)
-        z, nll, y_logits = model(x, None)
-        nll.backward()
-        gradient_val = 0
-        
-        grads = []
-        for w in dicts:
-            for param in w.parameters():
-                grads.append(param.grad.view(-1) ** 2)
-        grads = torch.cat(grads)
-        gradient_val = torch.norm(grads / Grads)
-        score.append(gradient_val.detach().cpu())
-        if i > max_iter:
-            break
-            
-    return score
 
-"""
-######################################################################################
-
-
-def AUTO_GLOW(opt, model, layers, max_iter=[1000, 1000], method='SMW', device='cuda:0'):
+def AUTO_GLOW(
+    opt,
+    model,
+    layers,
+    max_iter=[1000, 1000],
+    method='SMW',
+    device='cuda:0'):
     
     """ Automated for convenience ! """
     

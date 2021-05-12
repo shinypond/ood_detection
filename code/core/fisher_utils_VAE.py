@@ -92,13 +92,11 @@ def Calculate_fisher_VAE(
                 denom = denom.unsqueeze(2)
                 numer = torch.bmm(b, b.permute(0, 2, 1))
                 Fisher_inv[pname] -= numer / denom
-                print(Fisher_inv[pname].shape)
                 
         elif method == 'Vanilla':
             grads = {}
             for pname, param in params.items():
                 grads[pname] = param.grad.view(-1) ** 2
-                
                 if i == 0:
                     Fisher_inv[pname] = grads[pname]
                 else:
@@ -225,7 +223,15 @@ def Calculate_score_VAE(
     return score
 
 
-def AUTO_VAE(opt, netE, netG, params, max_iter=[1000, 500], loss_type='ELBO_pixel', method='SMW', device='cuda:0'):
+def AUTO_VAE(
+    opt,
+    netE,
+    netG,
+    params,
+    max_iter=[1000, 500],
+    loss_type='ELBO_pixel',
+    method='SMW',
+    device='cuda:0'):
     
     """ Automated for convenience ! """
     """ loss_type : SHOULD BE 'ELBO_pixel' or 'exact' """

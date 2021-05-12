@@ -2,6 +2,7 @@ old/*
 data/*
 !data/README.txt
 saved_models/GLOW_cifar10/*
+saved_models/archived_models/GLOW_cifar10/*
 **/.ipynb_checkpoints
 **/__pycache__
 **/*.py~
