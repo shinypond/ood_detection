@@ -553,16 +553,16 @@ def test_loader_constant(opt, preprocess, batch_size, shuffle):
         def __init__(self, number=10000, transform=None):
             super(Constant, self).__init__()
             self.number = number
-            self.total_data = torch.randint(0, 256, (self.number, opt.nc, 1, 1))
+            self.total_data = np.random.randint(0, 256, (self.number, opt.nc, 1, 1))
             self.transform = transform
 
         def __len__(self):
             return self.number
 
         def __getitem__(self, index):
-            data = self.total_data[index].float()
-            data = data.repeat(32 * 32, 1, 1).reshape((-1, 32, 32)) / 255
-            return self.transform(data)
+            array = torch.tensor(self.total_data[index] / 255).float()
+            array = array.repeat(1, 32, 32)
+            return self.transform(array)
 
     transform = transforms.Compose(preprocess)
 

@@ -152,6 +152,19 @@ class GLOW_fmnist:
     
     
 class CNN_fmnist:
+    train_dist = 'fmnist'
+    ood_list = ['fmnist',
+                #'svhn',
+                #'celeba', # Caution! celeba doesn't have any labels.
+                #'lsun',
+                'cifar10',
+                #'cifar100',
+                'mnist',
+                'kmnist',
+                #'omniglot',
+                'notmnist',
+                'noise',
+                'constant']
     dataroot = '../data'
     modelroot = '../saved_models'
     workers = 1
