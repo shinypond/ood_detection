@@ -1,6 +1,8 @@
 import torch
 import train_VAE.DCGAN_VAE_pixel as DVAE_pixel
-from train_CNN.basic_CNN import basic_CNN as CNN
+#from train_CNN.basic_CNN import basic_CNN as CNN
+#from train_CNN.CNN_models import CNN_cifar10, CNN_fmnist
+from train_CNN.resnet import ResNet18
 import config
 import os, sys
 from train_GLOW.model import Glow
@@ -25,8 +27,11 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
         opt.beta = beta
     
     # 21.05.12 Fixed the final models !
-    path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
-    path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
+    #path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
+    #path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
+    path_E = f'{opt.modelroot}/archived_models/VAE_old(schedule30+0.5,hflip)/VAE_cifar10/netE_pixel_nz_100_ngf_64_beta_1.0_epoch_100.pth'
+    path_G = f'{opt.modelroot}/archived_models/VAE_old(schedule30+0.5,hflip)/VAE_cifar10/netG_pixel_nz_100_ngf_64_beta_1.0_epoch_100.pth'
+    
     
         
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -77,6 +82,7 @@ def load_pretrained_GLOW(option='cifar10'):
     model.load_state_dict(torch.load(model_path)['model']) # there are two keys: 'model', 'optimizer'
     
     # original GLOW model (same to "GLOW" by Kingma)
+    # Note : Only available for CIFAR10 (not FMNIST!!)
     #model_path = f'{opt.modelroot}/GLOW_{option}/glow_affine_coupling.pt' 
     #model.load_state_dict(torch.load(model_path))
     
@@ -86,23 +92,22 @@ def load_pretrained_GLOW(option='cifar10'):
     
     return model
 
-def load_pretrained_CNN(option='fmnist', augment='hflip', epoch=200):
+def load_pretrained_CNN(option='cifar10', augment='hflip', epoch=200):
     
     """ Load the pre-trained GlOW model (for CIFAR10, FMNIST???) """
     """ option : 'cifar10' or 'fmnist' is available !! """
     
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     if option == 'cifar10':
         opt = config.CNN_cifar10
         image_shape = (32, 32, 3)
-        num_classes = 10
+        #model = CNN_cifar10(opt.imageSize, opt.nc).to(device)
+        model = ResNet18(opt.nc).to(device)
     elif option == 'fmnist':
         opt = config.CNN_fmnist
         image_shape = (32, 32, 1)
-        num_classes = 10
-    
-    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-
-    model = CNN(opt.imageSize, opt.nc).to(device)
+        #model = CNN_fmnist(opt.imageSize, opt.nc).to(device)
+        model = ResNet18(opt.nc).to(device)
     
     # trained by YCY
     model_path = f'{opt.modelroot}/CNN_{option}/cnn_augment_{augment}_epoch_{epoch}.pth'

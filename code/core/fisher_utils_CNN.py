@@ -48,7 +48,7 @@ def Calculate_fisher_CNN(
             for lname, layer in layers.items():
                 grads[lname] = []
                 for param in layer.parameters():
-                    grads[lname].append(param.grad.view(-1, 1) ** 2)
+                    grads[lname].append(param.grad.view(-1) ** 2)
                 grads[lname] = torch.cat(grads[lname]).to(device)
                 if i == 0:
                     Fisher_inv[lname] = grads[lname]
@@ -97,7 +97,13 @@ def Calculate_score_CNN(
     score = {}
     temp = 10 # temperature
     
-    for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher CNN', unit='step')):
+    for i, x in enumerate(tqdm(dataloader, desc='Calculate Fisher CNN', unit='step')):
+        
+        try: # with label (ex : cifar10, svhn and etc.)
+            x, _ = x
+        except: # without label (ex : celeba)
+            pass
+        
         optimizer.zero_grad()
         x = x.to(device)
         y_pred = model(x)
@@ -114,6 +120,7 @@ def Calculate_score_CNN(
                 grads[lname] = []
                 for param in layer.parameters():
                     grads[lname].append(param.grad.view(-1))
+                grads[lname] = torch.cat(grads[lname]).to(device)
                 s = torch.norm(grads[lname] / Fisher_inv[lname]).detach().cpu()
                 if i == 0:
                     score[lname] = []

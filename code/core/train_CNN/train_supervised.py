@@ -17,10 +17,25 @@ import torch.optim as optim
 import torch.utils.data
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
-from basic_CNN import basic_CNN as CNN
+#from basic_CNN import basic_CNN as CNN
+from CNN_models import CNN_cifar10, CNN_fmnist
+from resnet import ResNet18
 import os
 from datetime import datetime
 
+def init_weights(net):
+    for m in net.modules():
+        if isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal_(m.weight, mode='fan_out')
+            if m.bias != None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, std=1e-3)
+            if m.bias != None:
+                nn.init.constant_(m.bias, 0)
 
 if __name__=="__main__":
 
@@ -31,7 +46,7 @@ if __name__=="__main__":
     parser.add_argument('--imageSize', type=int, default=32, help='the height / width of the input image to network')
     parser.add_argument('--nc', type=int, default=1, help='input image channels')
     parser.add_argument('--niter', type=int, default=200, help='number of epochs to train for')
-    parser.add_argument('--lr', type=float, default=3e-4, help='learning rate')
+    parser.add_argument('--lr', type=float, default=1e-1, help='learning rate')
     parser.add_argument('--ngpu'  , type=int, default=1, help='number of GPUs to use')
     parser.add_argument('--experiment', default=None, help='Where to store samples and models')
 
@@ -44,15 +59,6 @@ if __name__=="__main__":
     random.seed(opt.manualSeed)
     torch.manual_seed(opt.manualSeed)
     cudnn.benchmark = True
-    """
-    dataset_fmnist_train = dset.FashionMNIST(root=opt.dataroot, train=True, download=True, transform=transforms.Compose([
-                                transforms.Resize((opt.imageSize)),
-                                transforms.ToTensor(),
-                            ]))
-    dataloader_fmnist = torch.utils.data.DataLoader(dataset_fmnist_train, batch_size=opt.batchSize,
-                                            shuffle=True, num_workers=int(opt.workers))
-    """
-    
     
 #############################################################
 #############################################################
@@ -84,36 +90,61 @@ if __name__=="__main__":
         opt.nc = 3
         opt.niter = 200
         opt.train_dist = 'cifar10'
-        experiment = '../../../saved_models/CNN_cifar10/'
+        experiment = '../../../saved_models/CNN_cifar10'
+        transform = transforms.Compose([
+            transform,
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
         dataset = dset.CIFAR10(
             root=opt.dataroot,
             download=False,
             train=True,
             transform=transform,
         )
-        dataloader = torch.utils.data.DataLoader(
-            dataset,
+        train_set, val_set = torch.utils.data.random_split(dataset, [40000, 10000])
+        train_dataloader = torch.utils.data.DataLoader(
+            train_set,
             batch_size=opt.batchSize,
             shuffle=True,
             num_workers=int(opt.workers),
         )
+        val_dataloader = torch.utils.data.DataLoader(
+            val_set,
+            batch_size=1,
+            shuffle=True,
+            num_workers=int(opt.workers),
+        )
+        #cnn = CNN_cifar10(opt.imageSize, opt.nc).to(device)
+        
     elif traindist == '2':
         opt.nc = 1
         opt.niter = 200
         opt.train_dist = 'fmnist'
-        experiment = '../../../saved_models/CNN_fmnist/'
+        experiment = '../../../saved_models/CNN_fmnist'
+        transform = transforms.Compose([
+            transform,
+            transforms.Normalize((0.48,), (0.2,)),
+        ])
         dataset = dset.FashionMNIST(
             root=opt.dataroot,
             download=False,
             train=True,
             transform=transform,
         )
-        dataloader = torch.utils.data.DataLoader(
-            dataset,
+        train_set, val_set = torch.utils.data.random_split(dataset, [50000, 10000])
+        train_dataloader = torch.utils.data.DataLoader(
+            train_set,
             batch_size=opt.batchSize,
             shuffle=True,
             num_workers=int(opt.workers)
         )
+        val_dataloader = torch.utils.data.DataLoader(
+            val_set,
+            batch_size=1,
+            shuffle=True,
+            num_workers=int(opt.workers)
+        )
+        #cnn = CNN_fmnist(opt.imageSize, opt.nc).to(device)
     else:
         raise ValueError('Oops! Please insert 1 or 2. Bye~')
         
@@ -125,28 +156,50 @@ if __name__=="__main__":
 #############################################################
 #############################################################
 
-    ngpu = int(opt.ngpu)
-    nc = int(opt.nc)
-    
-    cnn = CNN(opt.imageSize, nc).to(device)
-    optimizer = optim.Adam(cnn.parameters(), lr=opt.lr, weight_decay = 3e-5)
+    cnn = ResNet18(opt.nc).to(device)
+    cnn.apply(init_weights)
+    optimizer = optim.SGD(cnn.parameters(), lr=opt.lr, momentum=0.9, weight_decay=5e-4)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.niter)
     cnn.train()
-    loss_fn = nn.CrossEntropyLoss(reduction = 'mean')
+    loss_fn = nn.CrossEntropyLoss()
     start = datetime.now()
 
     for epoch in range(opt.niter):
-        Total_loss = 0
-        for i, (x, y) in enumerate(dataloader):
+        # train
+        Total_train_loss = 0
+        train_correct = 0
+        train_total = 0
+        cnn.train()
+        for i, (x, y) in enumerate(train_dataloader):
             x = x.to(device)
             y = y.to(device)
-            b = x.size(0)
             y_pred = cnn(x)
             optimizer.zero_grad()
             loss = loss_fn(y_pred, y)
             loss.backward()
             optimizer.step()
-            Total_loss += loss 
-        print(f'Epoch: {epoch} Loss: {Total_loss}, Elapsed Time : {datetime.now() - start}')
-        if epoch % 50 == 49:
-            torch.save(cnn.state_dict(), experiment + f'cnn_augment_{opt.augment}_epoch_{epoch+1}.pth')
-    torch.save(cnn.state_dict(), experiment + f'cnn_augment_{opt.augment}_epoch_{opt.niter}.pth')
+            Total_train_loss += loss.item()
+            _, predicted = y_pred.max(1)
+            train_total += y.size(0)
+            train_correct += predicted.eq(y).sum().item()
+        # validation
+        val_correct = 0
+        cnn.eval()
+        for i, (x, y) in enumerate(val_dataloader):
+            x = x.to(device)
+            y = y.to(device)
+            _, predicted = cnn(x).max(1)
+            val_correct += predicted.eq(y).sum().item()
+            if i == 1000:
+                break
+        # Print        
+        print(f'Epoch: {epoch}, Train_Loss: {Total_train_loss:.2f}, Train_Acc : {100 * train_correct / train_total:.2f}%, Val_Acc : {100 * val_correct / 1000}%, Elapsed Time : {datetime.now() - start}')
+        if epoch % 10 == 9:
+            torch.save(cnn.state_dict(), experiment + f'/cnn_augment_{opt.augment}_epoch_{epoch+1}.pth')
+            print(' < model checkpoint saved! > ')
+    torch.save(cnn.state_dict(), experiment + f'/cnn_augment_{opt.augment}_epoch_{opt.niter}.pth')
+
+    
+    
+    
+    

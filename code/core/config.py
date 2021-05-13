@@ -4,18 +4,18 @@
 class VAE_cifar10:
     train_dist = 'cifar10'
     ood_list = ['cifar10',
-                'svhn',
-                'celeba',
+                #'svhn',
+                #'celeba',
                 'lsun',
-                'cifar100',
-                'mnist',
-                'fmnist',
-                'kmnist',
-                'omniglot',
-                'notmnist',
+                #'cifar100',
+                #'mnist',
+                #'fmnist',
+                #'kmnist',
+                #'omniglot',
+                #'notmnist',
                 #'trafficsign',
-                'noise',
-                'constant',
+                #'noise',
+                #'constant',
                ]
     dataroot = '../data'
     modelroot = '../saved_models'
@@ -82,8 +82,8 @@ class GLOW_cifar10:
     eval_batchsize = 1
     epochs = 250
     seed = 0
-    hidden_channels = 512
-    K = 32
+    hidden_channels = 400
+    K = 8
     L = 3
     actnorm_scale = 1.0
     flow_permutation = "invconv" # invconv, shuffle, reverse
@@ -151,17 +151,42 @@ class GLOW_fmnist:
     nc = 1
     
     
+class CNN_cifar10:
+    train_dist = 'cifar10'
+    ood_list = ['cifar10',
+                'svhn',
+                'celeba',
+                'lsun',
+                'cifar100',
+                'mnist',
+                'fmnist',
+                'kmnist',
+                'omniglot',
+                'notmnist',
+                'noise',
+                'constant',
+               ]
+    dataroot = '../data'
+    modelroot = '../saved_models'
+    workers = 1
+    imageSize = 32
+    nc = 3 # input image channels
+    ngpu = 1
+    batch_size = 1
+    niter = 200
+    
+    
 class CNN_fmnist:
     train_dist = 'fmnist'
     ood_list = ['fmnist',
                 'svhn',
-                #'celeba', # Caution! celeba doesn't have any labels.
-                #'lsun',
+                'celeba',
+                'lsun',
                 'cifar10',
-                #'cifar100',
+                'cifar100',
                 'mnist',
                 'kmnist',
-                #'omniglot',
+                'omniglot',
                 'notmnist',
                 'noise',
                 'constant']
@@ -171,8 +196,9 @@ class CNN_fmnist:
     imageSize = 32
     nc = 1 # input image channels
     ngpu = 1
-    #modelpath = '../saved_models/CNN_fmnist/cnn.pth'
     batch_size = 1
+    niter = 20
+    
     
     
     

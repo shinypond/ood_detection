@@ -103,6 +103,24 @@ def main():
             transforms.Resize((opt.imageSize, opt.imageSize)),
             transforms.ToTensor(),
         ])
+    elif augment == '3':
+        opt.augment = 'miracle'
+        transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.Resize((opt.imageSize, opt.imageSize)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
+    elif augment == '3':
+        opt.augment = 'miracle'
+        transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.Resize((opt.imageSize, opt.imageSize)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        ])
         # if you want to add other augmentations, then append them at this point!
     else:
         raise ValueError('Oops! Please insert 1 or 2. Bye~')

@@ -32,7 +32,7 @@ def Calculate_fisher_VAE(
     """     (2) 'exact' (exact LogLikelihood for VAE ; Jae-moo Choi's NEW(?) viewpoint)"""
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
     
-    assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
+    assert method in ['exact', 'SMW', 'Vanilla'], 'method must be "SMW" or "Vanilla"'
     
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netE.eval()
@@ -67,7 +67,21 @@ def Calculate_fisher_VAE(
             
         loss.backward(retain_graph=True)
         
-        if method == 'SMW':
+        if method == 'exact':
+            grads = {}
+            count += 1
+            for pname, param in params.items():
+                grads[pname] = []
+                for j in range(param.grad.shape[0]):
+                    grads[pname].append(param.grad[j, :, :, :].view(-1, 1))
+                grads[pname] = torch.cat(grads[pname], dim=1).T.to(device)
+                grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 4, -1) # 800 x 1024
+                
+                if i == 0:
+                    Fisher_inv[pname] = 1e-3 * torch.diag(torch.ones(grads[pname].shape[1])).unsqueeze(0).repeat(grads[pname].shape[0], 1, 1).to(device)
+                Fisher_inv[pname] += torch.bmm(grads[pname].unsqueeze(2), grads[pname].unsqueeze(1))
+                    
+        elif method == 'SMW':
             grads = {}
             count += 1
             for pname, param in params.items():
@@ -78,7 +92,7 @@ def Calculate_fisher_VAE(
                 grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 4, -1)
                 
                 if i == 0:
-                    Fisher_inv[pname] = 100 * torch.diag(torch.ones(grads[pname].shape[1])).unsqueeze(0).to(device)
+                    Fisher_inv[pname] = 1000 * torch.diag(torch.ones(grads[pname].shape[1])).unsqueeze(0).to(device)
                     Fisher_inv[pname] = Fisher_inv[pname].repeat(grads[pname].shape[0], 1, 1)
                     
                 u1 = grads[pname].unsqueeze(1)
@@ -100,8 +114,15 @@ def Calculate_fisher_VAE(
                     
         if i >= max_iter - 1:
             break
-        
-    if method == 'SMW':
+    
+    if method == 'exact':
+        normalize_factor = {}
+        for pname, _ in params.items():
+            for j in range(Fisher_inv[pname].shape[0]):
+                Fisher_inv[pname][j, :, :] = count * torch.inverse(Fisher_inv[pname][j, :, :])
+                normalize_factor[pname] = 2 * np.sqrt(np.array(Fisher_inv[pname].shape).prod())
+    
+    elif method == 'SMW':
         normalize_factor = {}
         for pname, _ in params.items():
             Fisher_inv[pname] *= count
@@ -141,7 +162,7 @@ def Calculate_score_VAE(
     """     (2) 'exact' (exact LogLikelihood for VAE ; Jae-moo Choi's NEW(?) viewpoint)"""
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
     
-    assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
+    assert method in ['exact', 'SMW', 'Vanilla'], 'method must be "SMW" or "Vanilla"'
     
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netE.eval()
@@ -181,7 +202,7 @@ def Calculate_score_VAE(
             
         loss.backward(retain_graph=True)
         
-        if method == 'SMW':
+        if method == 'SMW' or method == 'exact':
             grads = {}
             for pname, param in params.items():
                 grads[pname] = []
@@ -220,7 +241,7 @@ def AUTO_VAE(
     netE,
     netG,
     params,
-    max_iter=[1000, 500],
+    max_iter=[1000, 1000],
     loss_type='ELBO_pixel',
     method='SMW',
     device='cuda:0'):

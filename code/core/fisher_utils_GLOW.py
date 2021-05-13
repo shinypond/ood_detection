@@ -13,13 +13,13 @@ from data_loader import TRAIN_loader, TEST_loader
 def Calculate_fisher_GLOW(
     model,
     dataloader,
-    layers,
+    params,
     max_iter,
     method='SMW',):
     
     """ model : trained GLOW model """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
-    """ layers : Which LAYERs do you want to see for calculating Fisher ? """
+    """ params : Which PARAMs do you want to see for calculating Fisher ? """
     """ max_iter : When do you want to stop to calculate Fisher ? """
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
     
@@ -39,31 +39,28 @@ def Calculate_fisher_GLOW(
         nll.backward()
 
         if method == 'SMW':
-            assert 0==1, 'Have not been developed yet,,,'
             grads = {}
             count += 1
-            for lname, layer in layers.items():
-                grads[lname] = []
-                for param in layer.parameters():
-                    grads[lname].append(param.grad.view(-1, 1))
-                grads[lname] = torch.cat(grads[lname]).to(device)
-                grads[lname] = grads[lname].reshape(grads[lname].shape[0] * 1, -1)
-                
-                if i == 0:
-                    Fisher_inv[lname] = 100 * torch.diag(torch.ones(grads[lname].shape[1]))
-                
-                print(grads[lname].shape)
-                    
-                
-                
-                
-                
-                
+            for pname, param in params.items():
                 grads[pname] = []
+                if np.prod(param.shape) <= 1000:
+                    grads[pname] = param.grad.view(-1)
+                    if i == 0:
+                        Fisher_inv[pname] = 100 * torch.diag
+                    
+                    
+                assert 0==1
+                
+                
+                print(np.prod(param.shape)) 
                 for j in range(param.grad.shape[0]):
-                    grads[pname].append(param.grad[j, :, :, :].view(-1, 1))
+                    grads[pname].append(param.grad[j].view(-1, 1))
+                    #grads[pname].append(param.grad[j, :, :, :].view(-1, 1))
                 grads[pname] = torch.cat(grads[pname], dim=1).T.to(device)
-                grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 4, -1)
+                print(pname)
+                print(param.grad.shape)
+                print(grads[pname].shape)
+                #grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 4, -1)
                 
                 if i == 0:
                     Fisher_inv[pname] = 100 * torch.diag(torch.ones(grads[pname].shape[1])).unsqueeze(0).to(device)
@@ -79,15 +76,12 @@ def Calculate_fisher_GLOW(
                 
         elif method == 'Vanilla':
             grads = {}
-            for lname, layer in layers.items():
-                grads[lname] = []
-                for param in layer.parameters():
-                    grads[lname].append(param.grad.view(-1) ** 2)
-                grads[lname] = torch.cat(grads[lname]).to(device)
+            for pname, param in params.items():
+                grads[pname] = param.grad.view(-1) ** 2
                 if i == 0:
-                    Fisher_inv[lname] = grads[lname]
+                    Fisher_inv[pname] = grads[pname]
                 else:
-                    Fisher_inv[lname] = (i * Fisher_inv[lname] + grads[lname]) / (i + 1)
+                    Fisher_inv[pname] = (i * Fisher_inv[pname] + grads[pname]) / (i + 1)
                     
         if i >= max_iter - 1:
             break
@@ -100,18 +94,18 @@ def Calculate_fisher_GLOW(
             
     elif method == 'Vanilla':
         normalize_factor = {}
-        for lname, _ in layers.items():
-            Fisher_inv[lname] = torch.sqrt(Fisher_inv[lname])
-            Fisher_inv[lname] = Fisher_inv[lname] * (Fisher_inv[lname] > 1e-3)
-            Fisher_inv[lname][Fisher_inv[lname]==0] = 1e-3
-            normalize_factor[lname] = 2 * np.sqrt(len(Fisher_inv[lname]))
+        for pname, _ in params.items():
+            Fisher_inv[pname] = torch.sqrt(Fisher_inv[pname])
+            Fisher_inv[pname] = Fisher_inv[pname] * (Fisher_inv[pname] > 1e-3)
+            Fisher_inv[pname][Fisher_inv[pname]==0] = 1e-3
+            normalize_factor[pname] = 2 * np.sqrt(len(Fisher_inv[pname]))
         
     return Fisher_inv, normalize_factor
 
 def Calculate_score_GLOW(
     model,
     dataloader,
-    layers,
+    params,
     Fisher_inv,
     normalize_factor,
     max_iter,
@@ -119,7 +113,7 @@ def Calculate_score_GLOW(
     
     """ model : trained GLOW model """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
-    """ layers : Which LAYERs do you want to see for calculating Fisher ? """
+    """ params : Which PARAMs do you want to see for calculating Fisher ? """
     """ Fisher_inv, normalize_factor : Outputs from the function 'Calculate_fisher_GLOW' """
     """ max_iter : When do you want to stop to calculate Fisher ? """
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
@@ -143,7 +137,6 @@ def Calculate_score_GLOW(
         nll.backward()
         
         if method == 'SMW':
-            assert 0==1, 'Have not been developed yet,,,'
             grads = {}
             for pname, param in params.items():
                 grads[pname] = []
@@ -161,21 +154,18 @@ def Calculate_score_GLOW(
                 
         elif method == 'Vanilla':
             grads = {}
-            for lname, layer in layers.items():
-                grads[lname] = []
-                for param in layer.parameters(): 
-                    grads[lname].append(param.grad.view(-1))
-                grads[lname] = torch.cat(grads[lname])
-                s = torch.norm(grads[lname] / Fisher_inv[lname]).detach().cpu()
+            for pname, param in params.items():
+                grads[pname] = param.grad.view(-1)
+                s = torch.norm(grads[pname] / Fisher_inv[pname]).detach().cpu()
                 if i == 0:
-                    score[lname] = []
-                score[lname].append(s.numpy())
+                    score[pname] = []
+                score[pname].append(s.numpy())
                 
         if i >= max_iter - 1:
             break
             
-    for lname, _ in layers.items():
-        score[lname] = np.array(score[lname]) / normalize_factor[lname]
+    for pname, _ in params.items():
+        score[pname] = np.array(score[pname]) / normalize_factor[pname]
             
     return score
 
@@ -183,7 +173,7 @@ def Calculate_score_GLOW(
 def AUTO_GLOW(
     opt,
     model,
-    layers,
+    params,
     max_iter=[1000, 1000],
     method='SMW',
     device='cuda:0'):
@@ -198,7 +188,7 @@ def AUTO_GLOW(
             option=opt.train_dist,
             is_glow=True,
         ),
-        layers,
+        params,
         max_iter=max_iter[0],
         method=method,
     )
@@ -212,7 +202,7 @@ def AUTO_GLOW(
                 shuffle=True,
                 is_glow=True,
             ),
-            layers,
+            params,
             Fisher_inv,
             normalize_factor,
             max_iter=max_iter[1],
