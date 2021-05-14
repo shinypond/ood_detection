@@ -88,7 +88,7 @@ def main():
     # Ask train-dataset (1) CIFAR-10 (2) FMNIST 
     
     traindist = input('Q. Which dataset do you want to train the model for??\n(1) CIFAR-10 (2) FMNIST (Press 1 or 2)\n')
-    augment = input('Q. Apply data augmentation?\n(1) None (2) hflip (Press 1 or 2)\n')
+    augment = input('Q. Apply data augmentation?\n(1) None (2) hflip (3) hflip + Crop (Press 1 or 2 or 3)\n')
     
     if augment == '1':
         opt.augment = 'None'
@@ -104,22 +104,12 @@ def main():
             transforms.ToTensor(),
         ])
     elif augment == '3':
-        opt.augment = 'miracle'
+        opt.augment = 'hflip+crop'
         transform = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.Resize((opt.imageSize, opt.imageSize)),
             transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-        ])
-    elif augment == '3':
-        opt.augment = 'miracle'
-        transform = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.Resize((opt.imageSize, opt.imageSize)),
-            transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ])
         # if you want to add other augmentations, then append them at this point!
     else:
@@ -176,7 +166,7 @@ def main():
     nz = int(opt.nz)
     ngf = int(opt.ngf)
     nc = int(opt.nc)
-    print(f'Channel {nc}')
+    print(f'Channel {nc}, ngf {ngf}, nz {nz}, augment {opt.augment}')
     beta = opt.beta
     
     # custom weights initialization called on netG and netD
@@ -252,6 +242,9 @@ def main():
         scheduler2.step()
         now = datetime.today()
         print(f'\nNOW : {now:%Y-%m-%d %H:%M:%S}, Elapsed Time : {now - start}\n')
+        if epoch % 50 == 49:
+            torch.save(netE.state_dict(), experiment + f'/netE_pixel_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_epoch_{epoch+1}.pth')
+            torch.save(netG.state_dict(), experiment + f'/netG_pixel_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_epoch_{epoch+1}.pth')
             
     torch.save(netE.state_dict(), experiment + f'/netE_pixel_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_epoch_{opt.niter}.pth')
     torch.save(netG.state_dict(), experiment + f'/netG_pixel_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_epoch_{opt.niter}.pth')
