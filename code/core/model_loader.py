@@ -7,7 +7,7 @@ import config
 import os, sys
 from train_GLOW.model import Glow
 
-def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment='hflip', epoch=100):
+def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment='hflip+crop', epoch=200):
     
     """ Load the pre-trained VAE model (for CIFAR10, FMNIST) """
     """ option : 'cifar10' or 'fmnist' is available !! """
@@ -29,8 +29,8 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
     # 21.05.12 Fixed the final models !
     #path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
     #path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
-    path_E = f'{opt.modelroot}/archived_models/VAE_old(schedule30+0.5,hflip)/VAE_cifar10/netE_pixel_nz_100_ngf_64_beta_1.0_epoch_100.pth'
-    path_G = f'{opt.modelroot}/archived_models/VAE_old(schedule30+0.5,hflip)/VAE_cifar10/netG_pixel_nz_100_ngf_64_beta_1.0_epoch_100.pth'
+    path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
+    path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
     
     
         
@@ -110,8 +110,10 @@ def load_pretrained_CNN(option='cifar10', augment='hflip', epoch=200):
         model = ResNet18(opt.nc).to(device)
     
     # trained by YCY
-    model_path = f'{opt.modelroot}/CNN_{option}/cnn_augment_{augment}_epoch_{epoch}.pth'
-    model.load_state_dict(torch.load(model_path))
+    #model_path = f'{opt.modelroot}/CNN_{option}/cnn_augment_{augment}_epoch_{epoch}.pth'
+    model = torch.nn.DataParallel(model)
+    model_path = f'{opt.modelroot}/CNN_{option}/ckpt.pth'
+    model.load_state_dict(torch.load(model_path)['net'])
     model = model.eval()
     
     return model

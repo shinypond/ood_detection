@@ -1,5 +1,6 @@
 old/*
 data/*
+**/data/*
 !data/README.txt
 saved_models/GLOW_cifar10/glow_affine_coupling.pt
 saved_models/archived_models/GLOW_cifar10/glow_affine_coupling.pt

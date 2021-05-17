@@ -12,7 +12,7 @@ from torchvision.datasets import ImageFolder
 
 import config
 
-def TRAIN_loader(option='cifar10', shuffle=True, augment=False, is_glow=False, normalize=False):
+def TRAIN_loader(option='cifar10', shuffle=True, augment=False, is_glow=False, normalize=False, batch_size=1):
     
     """ Return train_loader for given dataset """
     """ Option : 'cifar10' or 'fmnist' """
@@ -32,7 +32,6 @@ def TRAIN_loader(option='cifar10', shuffle=True, augment=False, is_glow=False, n
         
         if augment:
             augment = [
-                transforms.RandomAffine(0, translate=(0.1, 0.1)),
                 transforms.RandomHorizontalFlip(p=0.5),
             ]
         else:
@@ -51,7 +50,7 @@ def TRAIN_loader(option='cifar10', shuffle=True, augment=False, is_glow=False, n
         )
         train_loader_cifar = data.DataLoader(
             dataset,
-            batch_size=opt.train_batchsize,
+            batch_size=batch_size,
             shuffle=shuffle,
             num_workers=int(opt.workers),
         )
@@ -74,7 +73,7 @@ def TRAIN_loader(option='cifar10', shuffle=True, augment=False, is_glow=False, n
         )
         train_loader_fmnist = data.DataLoader(
             dataset,
-            batch_size=opt.train_batchsize,
+            batch_size=batch_size,
             shuffle=shuffle,
             num_workers=int(opt.workers),
         )
@@ -243,7 +242,7 @@ def add_normalize(preprocess, nc):
 
 def test_loader_cifar10(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 1:
         preprocess += [rgb_to_gray]
     dataset_cifar10 = dset.CIFAR10(
@@ -265,7 +264,7 @@ def test_loader_cifar10(opt, preprocess, batch_size, shuffle, normalize=False):
 
 def test_loader_svhn(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 1:
         preprocess += [rgb_to_gray]
     dataset_svhn = dset.SVHN(
@@ -287,7 +286,7 @@ def test_loader_svhn(opt, preprocess, batch_size, shuffle, normalize=False):
     
 def test_loader_celeba(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 1:
         preprocess += [rgb_to_gray]
     class CelebA(data.Dataset):
@@ -325,7 +324,7 @@ def test_loader_celeba(opt, preprocess, batch_size, shuffle, normalize=False):
 
 def test_loader_lsun(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 1:
         preprocess += [rgb_to_gray]
     class LSUN(data.Dataset):
@@ -367,7 +366,7 @@ def test_loader_lsun(opt, preprocess, batch_size, shuffle, normalize=False):
 
 def test_loader_cifar100(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 1:
         preprocess += [rgb_to_gray]
     dataset_cifar100 = dset.CIFAR100(
@@ -389,7 +388,7 @@ def test_loader_cifar100(opt, preprocess, batch_size, shuffle, normalize=False):
 
 def test_loader_mnist(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 3:
         preprocess += [gray_to_rgb]
     dataset_mnist = dset.MNIST(
@@ -411,7 +410,7 @@ def test_loader_mnist(opt, preprocess, batch_size, shuffle, normalize=False):
     
 def test_loader_fmnist(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 3:
         preprocess += [gray_to_rgb]
     dataset_fmnist = dset.FashionMNIST(
@@ -433,7 +432,7 @@ def test_loader_fmnist(opt, preprocess, batch_size, shuffle, normalize=False):
     
 def test_loader_kmnist(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 3:
         preprocess += [gray_to_rgb]
     dataset_kmnist = dset.KMNIST(
@@ -455,7 +454,7 @@ def test_loader_kmnist(opt, preprocess, batch_size, shuffle, normalize=False):
     
 def test_loader_omniglot(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 3:
         preprocess += [gray_to_rgb]
     dataset_omniglot = dset.Omniglot(
@@ -477,7 +476,7 @@ def test_loader_omniglot(opt, preprocess, batch_size, shuffle, normalize=False):
     
 def test_loader_notmnist(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 1:
         preprocess += [rgb_to_gray]
     class notMNIST(data.Dataset):
@@ -518,7 +517,7 @@ def test_loader_notmnist(opt, preprocess, batch_size, shuffle, normalize=False):
     
 def test_loader_trafficsign(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     if opt.nc == 1:
         preprocess += [rgb_to_gray]
     class trafficsign(data.Dataset):
@@ -556,7 +555,7 @@ def test_loader_trafficsign(opt, preprocess, batch_size, shuffle, normalize=Fals
     
 def test_loader_noise(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     class Noise(data.Dataset):
         def __init__(self, number=10000, transform=None):
             super(Noise, self).__init__()
@@ -584,7 +583,7 @@ def test_loader_noise(opt, preprocess, batch_size, shuffle, normalize=False):
     
 def test_loader_constant(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
-        preprocess = add_normalize(preprocess)
+        preprocess = add_normalize(preprocess, opt.nc)
     class Constant(data.Dataset):
         def __init__(self, number=10000, transform=None):
             super(Constant, self).__init__()

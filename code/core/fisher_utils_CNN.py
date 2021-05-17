@@ -23,8 +23,6 @@ def Calculate_fisher_CNN(
     """ max_iter : When do you want to stop to calculate Fisher ? """
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
     
-    assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
-    
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     model.eval()
     optimizer = optim.SGD(model.parameters(), lr=0, momentum=0) # no learning
@@ -88,14 +86,12 @@ def Calculate_score_CNN(
     """ max_iter : When do you want to stop to calculate Fisher ? """
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
     
-    assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
-    
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     model.eval()
     optimizer = optim.SGD(model.parameters(), lr=0, momentum=0) # no learning
     loss_ftn = nn.CrossEntropyLoss(reduction='mean')
     score = {}
-    temp = 10 # temperature
+    temp = 100 # temperature
     
     for i, x in enumerate(tqdm(dataloader, desc='Calculate Fisher CNN', unit='step')):
         

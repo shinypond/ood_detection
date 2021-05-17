@@ -4,18 +4,18 @@
 class VAE_cifar10:
     train_dist = 'cifar10'
     ood_list = ['cifar10',
-                #'svhn',
-                #'celeba',
+                'svhn',
+                'celeba',
                 'lsun',
-                #'cifar100',
-                #'mnist',
-                #'fmnist',
-                #'kmnist',
-                #'omniglot',
-                #'notmnist',
-                #'trafficsign',
-                #'noise',
-                #'constant',
+                'cifar100',
+                'mnist',
+                'fmnist',
+                'kmnist',
+                'omniglot',
+                'notmnist',
+                'trafficsign',
+                'noise',
+                'constant',
                ]
     dataroot = '../data'
     modelroot = '../saved_models'
@@ -28,7 +28,7 @@ class VAE_cifar10:
     beta = 1 # Beta-VAE !
     batch_size = 1
     train_batchsize = 1
-    num_samples = 20
+    num_samples = 20 # as Likelihood Regret
     
 class VAE_fmnist:
     train_dist = 'fmnist'
@@ -55,7 +55,7 @@ class VAE_fmnist:
     beta = 1 # Beta-VAE !
     batch_size = 1
     train_batchsize = 1
-    num_samples = 20
+    num_samples = 20 # as Likelihood Regret
     
 class GLOW_cifar10:
     train_dist = 'cifar10'

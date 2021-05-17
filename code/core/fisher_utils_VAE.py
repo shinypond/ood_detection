@@ -32,14 +32,14 @@ def Calculate_fisher_VAE(
     """     (2) 'exact' (exact LogLikelihood for VAE ; Jae-moo Choi's NEW(?) viewpoint)"""
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
     
-    assert method in ['exact', 'SMW', 'Vanilla'], 'method must be "SMW" or "Vanilla"'
-    
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netE.eval()
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
     optimizer2 = optim.SGD(netG.parameters(), lr=0, momentum=0) # no learning
     Fisher_inv = {}
+    normalize_factor = {}
+    grads = {}
     count = 0
     
     for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher VAE', unit='step')):
@@ -68,7 +68,6 @@ def Calculate_fisher_VAE(
         loss.backward(retain_graph=True)
         
         if method == 'exact':
-            grads = {}
             count += 1
             for pname, param in params.items():
                 grads[pname] = []
@@ -78,11 +77,11 @@ def Calculate_fisher_VAE(
                 grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 4, -1) # 800 x 1024
                 
                 if i == 0:
-                    Fisher_inv[pname] = 1e-3 * torch.diag(torch.ones(grads[pname].shape[1])).unsqueeze(0).repeat(grads[pname].shape[0], 1, 1).to(device)
+                    identity = torch.diag(torch.ones(grads[pname].shape[1]))
+                    Fisher_inv[pname] = 1e-3 * identity.unsqueeze(0).repeat(grads[pname].shape[0], 1, 1).to(device)
                 Fisher_inv[pname] += torch.bmm(grads[pname].unsqueeze(2), grads[pname].unsqueeze(1))
                     
         elif method == 'SMW':
-            grads = {}
             count += 1
             for pname, param in params.items():
                 grads[pname] = []
@@ -104,7 +103,6 @@ def Calculate_fisher_VAE(
                 Fisher_inv[pname] -= numer / denom
                 
         elif method == 'Vanilla':
-            grads = {}
             for pname, param in params.items():
                 grads[pname] = param.grad.view(-1) ** 2
                 if i == 0:
@@ -116,20 +114,17 @@ def Calculate_fisher_VAE(
             break
     
     if method == 'exact':
-        normalize_factor = {}
         for pname, _ in params.items():
             for j in range(Fisher_inv[pname].shape[0]):
                 Fisher_inv[pname][j, :, :] = count * torch.inverse(Fisher_inv[pname][j, :, :])
                 normalize_factor[pname] = 2 * np.sqrt(np.array(Fisher_inv[pname].shape).prod())
     
     elif method == 'SMW':
-        normalize_factor = {}
         for pname, _ in params.items():
             Fisher_inv[pname] *= count
             normalize_factor[pname] = 2 * np.sqrt(np.array(Fisher_inv[pname].shape).prod())
             
     elif method == 'Vanilla':
-        normalize_factor = {}
         for pname, _ in params.items():
             Fisher_inv[pname] = torch.sqrt(Fisher_inv[pname])
             Fisher_inv[pname] = Fisher_inv[pname] * (Fisher_inv[pname] > 1e-3)
@@ -162,13 +157,12 @@ def Calculate_score_VAE(
     """     (2) 'exact' (exact LogLikelihood for VAE ; Jae-moo Choi's NEW(?) viewpoint)"""
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
     
-    assert method in ['exact', 'SMW', 'Vanilla'], 'method must be "SMW" or "Vanilla"'
-    
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     netE.eval()
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
     optimizer2 = optim.SGD(netG.parameters(), lr=0, momentum=0) # no learning
+    grads = {}
     score = {}
         
     for i, x in enumerate(tqdm(dataloader, desc='Calculate Score VAE', unit='step')):
@@ -203,7 +197,6 @@ def Calculate_score_VAE(
         loss.backward(retain_graph=True)
         
         if method == 'SMW' or method == 'exact':
-            grads = {}
             for pname, param in params.items():
                 grads[pname] = []
                 for j in range(param.grad.shape[0]):
@@ -219,7 +212,6 @@ def Calculate_score_VAE(
                 score[pname].append(s)
                 
         elif method == 'Vanilla':
-            grads = {}
             for pname, param in params.items():
                 grads[pname] = param.grad.view(-1)
                 s = torch.norm(grads[pname] / Fisher_inv[pname]).detach().cpu()

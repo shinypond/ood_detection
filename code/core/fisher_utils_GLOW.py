@@ -23,8 +23,6 @@ def Calculate_fisher_GLOW(
     """ max_iter : When do you want to stop to calculate Fisher ? """
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
     
-    assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
-    
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     model.eval()
     optimizer = optim.SGD(model.parameters(), lr=0, momentum=0) # no learning
@@ -37,42 +35,36 @@ def Calculate_fisher_GLOW(
         x = x.to(device)
         z, nll, y_logits = model(x, None)
         nll.backward()
-
+                
         if method == 'SMW':
             grads = {}
             count += 1
             for pname, param in params.items():
                 grads[pname] = []
-                if np.prod(param.shape) <= 1000:
-                    grads[pname] = param.grad.view(-1)
+                if np.prod(param.shape) <= 2500: # calculate the exact inverse
+                    grads[pname] = param.grad.view(-1).to(device)
                     if i == 0:
-                        Fisher_inv[pname] = 100 * torch.diag
-                    
-                    
-                assert 0==1
-                
-                
-                print(np.prod(param.shape)) 
-                for j in range(param.grad.shape[0]):
-                    grads[pname].append(param.grad[j].view(-1, 1))
-                    #grads[pname].append(param.grad[j, :, :, :].view(-1, 1))
-                grads[pname] = torch.cat(grads[pname], dim=1).T.to(device)
-                print(pname)
-                print(param.grad.shape)
-                print(grads[pname].shape)
-                #grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 4, -1)
-                
-                if i == 0:
-                    Fisher_inv[pname] = 100 * torch.diag(torch.ones(grads[pname].shape[1])).unsqueeze(0).to(device)
-                    Fisher_inv[pname] = Fisher_inv[pname].repeat(grads[pname].shape[0], 1, 1)
-                    
-                u1 = grads[pname].unsqueeze(1)
-                u2 = grads[pname].unsqueeze(2)
-                b = torch.bmm(Fisher_inv[pname], u2)
-                denom = torch.ones(grads[pname].shape[0], 1).to(device) + torch.bmm(u1, b).squeeze(2)
-                denom = denom.unsqueeze(2)
-                numer = torch.bmm(b, b.permute(0, 2, 1))
-                Fisher_inv[pname] -= numer / denom
+                        identity = torch.diag(torch.ones(grads[pname].shape[0]))
+                        Fisher_inv[pname] = 1e-3 * identity.to(device)
+                    Fisher_inv[pname] += torch.mm(grads[pname].unsqueeze(1), grads[pname].unsqueeze(0))
+                else: # calculate the inverse by SMW formula
+                    print(pname, param.shape)
+                    for j in range(param.grad.shape[0]):
+                        grads[pname].append(param.grad[j, :, :, :].view(-1, 1))
+                    grads[pname] = torch.cat(grads[pname], dim=1).T.to(device)
+                    #grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 4, -1)
+                    if i == 0:
+                        identity = torch.diag(torch.ones(grads[pname].shape[1]))
+                        Fisher_inv[pname] = 1000 * identity.unsqueeze(0).to(device)
+                        Fisher_inv[pname] = Fisher_inv[pname].repeat(grads[pname].shape[0], 1, 1)
+                    u1 = grads[pname].unsqueeze(1)
+                    u2 = grads[pname].unsqueeze(2)
+                    b = torch.bmm(Fisher_inv[pname], u2)
+                    denom = torch.ones(grads[pname].shape[0], 1).to(device) + torch.bmm(u1, b).squeeze(2)
+                    denom = denom.unsqueeze(2)
+                    numer = torch.bmm(b, b.permute(0, 2, 1))
+                    Fisher_inv[pname] -= numer / denom
+                    print(Fisher_inv[pname].shape)
                 
         elif method == 'Vanilla':
             grads = {}
@@ -88,16 +80,19 @@ def Calculate_fisher_GLOW(
         
     if method == 'SMW':
         normalize_factor = {}
-        for pname, _ in params.items():
-            Fisher_inv[pname] *= count
+        for pname, param in params.items():
+            if np.prod(param.shape) <= 1000: # exact
+                Fisher_inv[pname] = count * torch.inverse(Fisher_inv[pname])
+            else: # SMW
+                Fisher_inv[pname] *= count
             normalize_factor[pname] = 2 * np.sqrt(np.array(Fisher_inv[pname].shape).prod())
             
     elif method == 'Vanilla':
         normalize_factor = {}
         for pname, _ in params.items():
             Fisher_inv[pname] = torch.sqrt(Fisher_inv[pname])
-            Fisher_inv[pname] = Fisher_inv[pname] * (Fisher_inv[pname] > 1e-3)
-            Fisher_inv[pname][Fisher_inv[pname]==0] = 1e-3
+            Fisher_inv[pname] = Fisher_inv[pname] * (Fisher_inv[pname] > 1e-8)
+            Fisher_inv[pname][Fisher_inv[pname]==0] = 1e-8
             normalize_factor[pname] = 2 * np.sqrt(len(Fisher_inv[pname]))
         
     return Fisher_inv, normalize_factor
@@ -118,8 +113,6 @@ def Calculate_score_GLOW(
     """ max_iter : When do you want to stop to calculate Fisher ? """
     """ method : 'SMW' (Use Sherman-Morrison-Woodbury Formula) or 'Vanilla' (only see diagonal of Fisher matrix) """
     
-    assert method == 'SMW' or method == 'Vanilla', 'method must be "SMW" or "Vanilla"'
-    
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     optimizer = optim.SGD(model.parameters(), lr=0, momentum=0)
     score = {}
@@ -136,18 +129,31 @@ def Calculate_score_GLOW(
         z, nll, y_logits = model(x, None)
         nll.backward()
         
+        if method == 'SMW_invconv':
+            grads = {}
+            for pname, param in params.items():
+                grads[pname] = []
+                
+        
         if method == 'SMW':
             grads = {}
             for pname, param in params.items():
                 grads[pname] = []
-                for j in range(param.grad.shape[0]):
-                    grads[pname].append(param.grad[j, :, :, :].view(-1, 1)) # 4096 x 1
-                grads[pname] = torch.cat(grads[pname], dim=1).T.to(device) # 200 x 4096
-                grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 4, -1) # (200 x 64) x (4096 / 64)
-                u1 = grads[pname].unsqueeze(1)
-                u2 = grads[pname].unsqueeze(2)
-                s = torch.bmm(torch.bmm(u1, Fisher_inv[pname]), u2)
-                s = torch.sum(s).detach().cpu().numpy()
+                if np.prod(param.shape) <= 1000: # exact
+                    grads[pname] = param.grad.view(-1).to(device)
+                    u1 = grads[pname].unsqueeze(0)
+                    u2 = grads[pname].unsqueeze(1)
+                    s = torch.mm(torch.mm(u1, Fisher_inv[pname]), u2)
+                    s = s.view(-1).detach().cpu().numpy()
+                else: # SMW
+                    for j in range(param.grad.shape[0]):
+                        grads[pname].append(param.grad[j, :, :, :].view(-1, 1))
+                    grads[pname] = torch.cat(grads[pname], dim=1).T.to(device)
+                    grads[pname] = grads[pname].reshape(grads[pname].shape[0] * 4, -1)
+                    u1 = grads[pname].unsqueeze(1)
+                    u2 = grads[pname].unsqueeze(2)
+                    s = torch.bmm(torch.bmm(u1, Fisher_inv[pname]), u2)
+                    s = torch.sum(s).detach().cpu().numpy()
                 if i == 0:
                     score[pname] = []
                 score[pname].append(s)
@@ -157,6 +163,7 @@ def Calculate_score_GLOW(
             for pname, param in params.items():
                 grads[pname] = param.grad.view(-1)
                 s = torch.norm(grads[pname] / Fisher_inv[pname]).detach().cpu()
+                #s = torch.norm(grads[pname]).detach().cpu()
                 if i == 0:
                     score[pname] = []
                 score[pname].append(s.numpy())
