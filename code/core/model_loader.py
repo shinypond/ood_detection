@@ -27,10 +27,12 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
         opt.beta = beta
     
     # 21.05.12 Fixed the final models !
-    #path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
-    #path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
     path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
     path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
+    
+    # temp
+    #path_E = f'{opt.modelroot}/netE_pixel_cifar10_None_nz200_ngf64_lambda0.pth'
+    #path_G = f'{opt.modelroot}/netG_pixel_cifar10_None_nz200_ngf64_lambda0.pth'
     
     
         

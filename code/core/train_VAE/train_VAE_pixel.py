@@ -113,7 +113,7 @@ def main():
         ])
         # if you want to add other augmentations, then append them at this point!
     else:
-        raise ValueError('Oops! Please insert 1 or 2. Bye~')
+        raise ValueError('Oops! Please insert 1 or 2 or 3. Bye~')
     
     if traindist == '1':
         opt.nc = 3
