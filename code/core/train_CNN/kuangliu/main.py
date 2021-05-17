@@ -128,6 +128,9 @@ elif ans == '2':
         net = ResNet152(nc)
     else:
         raise ValueError('Wrong layer number')
+
+else:
+    raise ValueError('Wrong Dataset number')
         
 # net = VGG('VGG19')
 # net = ResNet18()
