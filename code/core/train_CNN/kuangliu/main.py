@@ -104,7 +104,7 @@ if ans == '1':
     elif ans2 == '4':
         modelname = 'VGG19'
     else:
-        raise ValueError, 'Wrong layer number'
+        raise ValueError('Wrong layer number')
     net = VGG(modelname)
     
 elif ans == '2':
@@ -127,7 +127,7 @@ elif ans == '2':
         modelname = 'ResNet152'
         net = ResNet152(nc)
     else:
-        raise ValueError, 'Wrong layer number'
+        raise ValueError('Wrong layer number')
         
 # net = VGG('VGG19')
 # net = ResNet18()
