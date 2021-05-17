@@ -1,0 +1,1 @@
+This is the data directory for training CIFAR-10, FMNIST (kuangliu)
