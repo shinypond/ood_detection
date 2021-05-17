@@ -105,7 +105,7 @@ if ans == '1':
         modelname = 'VGG19'
     else:
         raise ValueError('Wrong layer number')
-    net = VGG(modelname)
+    net = VGG(modelname, in_channels=nc)
     
 elif ans == '2':
     print('Q. How much layers?')
