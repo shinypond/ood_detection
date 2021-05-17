@@ -313,7 +313,7 @@ def test_loader_celeba(opt, preprocess, batch_size, shuffle, normalize=False):
         transforms.ToTensor(),
     ] + preprocess)
 
-    celeba = CelebA('../data/celeba/archive', transform=transform)
+    celeba = CelebA(f'{opt.dataroot}/celeba/archive', transform=transform)
     test_loader_celeba = data.DataLoader(
         celeba,
         batch_size=batch_size,
@@ -355,7 +355,7 @@ def test_loader_lsun(opt, preprocess, batch_size, shuffle, normalize=False):
         transforms.ToTensor(),
     ] + preprocess)
 
-    lsun = LSUN('../data/LSUN_train_10000', transform=transform)
+    lsun = LSUN(f'{opt.dataroot}/LSUN_train_10000', transform=transform)
     test_loader_lsun = data.DataLoader(
         lsun,
         batch_size=batch_size,
@@ -506,7 +506,7 @@ def test_loader_notmnist(opt, preprocess, batch_size, shuffle, normalize=False):
         transforms.ToTensor(),
     ] + preprocess)
 
-    notmnist = notMNIST('../data/notMNIST_small/', transform=transform)
+    notmnist = notMNIST(f'{opt.dataroot}/notMNIST_small/', transform=transform)
     test_loader_notmnist = data.DataLoader(
         notmnist,
         batch_size=batch_size,
@@ -544,7 +544,7 @@ def test_loader_trafficsign(opt, preprocess, batch_size, shuffle, normalize=Fals
         transforms.ToTensor(),
     ] + preprocess)
 
-    ts = trafficsign('../data/GTSRB_Final_Test_Images/Final_Test/Images', transform=transform)
+    ts = trafficsign(f'{opt.dataroot}/GTSRB_Final_Test_Images/Final_Test/Images', transform=transform)
     test_loader_trafficsign = data.DataLoader(
         ts,
         batch_size=batch_size,
@@ -609,3 +609,5 @@ def test_loader_constant(opt, preprocess, batch_size, shuffle, normalize=False):
         num_workers=0,
     )
     return test_loader_constant
+
+

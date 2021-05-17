@@ -17,7 +17,7 @@ class VAE_cifar10:
                 'noise',
                 'constant',
                ]
-    dataroot = '../data'
+    dataroot = '../../data'
     modelroot = '../saved_models'
     workers = 2
     imageSize = 32
@@ -44,12 +44,12 @@ class VAE_fmnist:
                 'notmnist',
                 'noise',
                 'constant']
-    dataroot = '../data'
+    dataroot = '../../data'
     modelroot = '../saved_models'
     workers = 2
     imageSize = 32
     nc = 1   # Num of c (channels)
-    nz = 200 # Num of z (latent)
+    nz = 100 # Num of z (latent)
     ngf = 32 # Num of Generator Filter size (scaling factor)
     ngpu = 1
     beta = 1 # Beta-VAE !

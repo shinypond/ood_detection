@@ -19,7 +19,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data
 
-from model import Glow
+from .model import Glow
 
 from ignite.contrib.handlers import ProgressBar
 from ignite.engine import Engine, Events
