@@ -64,12 +64,14 @@ if ans == '2':
     dataname = 'fmnist'
     nc = 1
     transform_train = transforms.Compose([
+        transforms.Resize((32, 32)), # for fmnist
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize((0.48,), (0.2,)),
     ])
 
     transform_test = transforms.Compose([
+        transforms.Resize((32, 32)), # for fmnist
         transforms.ToTensor(),
         transforms.Normalize((0.48,), (0.2,)),
     ])
