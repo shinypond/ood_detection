@@ -37,7 +37,7 @@ def AUROC(*args, labels=['cifar10', 'svhn'], verbose=True):
     #plot_roc_curve(fpr, tpr)
     rocauc = metrics.auc(fpr, tpr)
     if verbose:
-        title = f'In-dist : {labels[0]}  /  Out-dist : {labels[1]} \n AUC for Gradient Norm is: {rocauc:.6f}'
+        title = f'In-dist : {labels[0]}  /  Out-dist : {labels[1]} \n AUC is: {rocauc:.6f}'
         fig = plt.figure(figsize=(12, 9))
         plt.plot(fpr, tpr)
         plt.title(title)

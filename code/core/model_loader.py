@@ -1,8 +1,7 @@
 import torch
 import train_VAE.DCGAN_VAE_pixel as DVAE_pixel
-#from train_CNN.basic_CNN import basic_CNN as CNN
-#from train_CNN.CNN_models import CNN_cifar10, CNN_fmnist
 from train_CNN.resnet import ResNet18
+from train_CNN.vgg import VGG
 import config
 import os, sys
 from train_GLOW.model import Glow
@@ -94,27 +93,33 @@ def load_pretrained_GLOW(option='cifar10'):
     
     return model
 
-def load_pretrained_CNN(option='cifar10', augment='hflip', epoch=200):
+def load_pretrained_CNN(option='cifar10', modelname='VGG11'):
     
     """ Load the pre-trained GlOW model (for CIFAR10, FMNIST???) """
     """ option : 'cifar10' or 'fmnist' is available !! """
+    """ modelname : 'VGG11', 'VGG13', 'VGG16', 'VGG19', 'ResNet18' """
     
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     if option == 'cifar10':
         opt = config.CNN_cifar10
         image_shape = (32, 32, 3)
-        #model = CNN_cifar10(opt.imageSize, opt.nc).to(device)
-        model = ResNet18(opt.nc).to(device)
     elif option == 'fmnist':
         opt = config.CNN_fmnist
         image_shape = (32, 32, 1)
-        #model = CNN_fmnist(opt.imageSize, opt.nc).to(device)
+    else:
+        raise ValueError
+        
+    if modelname[:3] == 'VGG':
+        model = VGG(modelname, opt.nc).to(device)
+    elif modelname == 'ResNet18':
         model = ResNet18(opt.nc).to(device)
+    else:
+        raise ValueError
     
     # trained by YCY
     #model_path = f'{opt.modelroot}/CNN_{option}/cnn_augment_{augment}_epoch_{epoch}.pth'
     model = torch.nn.DataParallel(model)
-    model_path = f'{opt.modelroot}/CNN_{option}/ckpt.pth'
+    model_path = f'{opt.modelroot}/CNN_{option}/{option}_{modelname}_ckpt.pth'
     model.load_state_dict(torch.load(model_path)['net'])
     model = model.eval()
     

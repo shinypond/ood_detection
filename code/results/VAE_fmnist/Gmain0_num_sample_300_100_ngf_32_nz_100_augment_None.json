@@ -1,1 +1,0 @@
-{"fmnist": 0.5, "svhn": 1.0, "celeba": 1.0, "lsun": 1.0, "cifar10": 1.0, "cifar100": 0.9995999999999999, "mnist": 0.9631, "kmnist": 0.9954, "omniglot": 1.0, "notmnist": 1.0, "noise": 0.9704999999999999, "constant": 1.0}

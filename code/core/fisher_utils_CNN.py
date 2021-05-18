@@ -72,6 +72,7 @@ def Calculate_fisher_CNN(
         
 
 def Calculate_score_CNN(
+    is_ID,
     model,
     dataloader,
     layers,
@@ -80,6 +81,7 @@ def Calculate_score_CNN(
     max_iter,
     method='Vanilla',):
     
+    """ is_ID : True if cifar10 (test), otherwise False """
     """ model : CNN model, pre-trained for FMNIST dataset """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
     """ params : Which PARAMs do you want to see for calculating Fisher ? """
@@ -91,9 +93,9 @@ def Calculate_score_CNN(
     optimizer = optim.SGD(model.parameters(), lr=0, momentum=0) # no learning
     loss_ftn = nn.CrossEntropyLoss(reduction='mean')
     score = {}
-    temp = 100 # temperature
+    temp = 10 # temperature
     
-    for i, x in enumerate(tqdm(dataloader, desc='Calculate Fisher CNN', unit='step')):
+    for i, x in enumerate(tqdm(dataloader, desc='Calculate Score CNN', unit='step')):
         
         try: # with label (ex : cifar10, svhn and etc.)
             x, _ = x
@@ -104,6 +106,12 @@ def Calculate_score_CNN(
         x = x.to(device)
         y_pred = model(x)
         y = torch.argmax(y_pred, dim=1)
+        if is_ID:
+            # only for In-distribution
+            highest = nn.functional.softmax(y_pred, dim=1).max().item()
+            if highest < 0.8:
+                max_iter += 1
+                continue
         loss = loss_ftn(y_pred / temp, y)
         loss.backward()
         
@@ -118,9 +126,11 @@ def Calculate_score_CNN(
                     grads[lname].append(param.grad.view(-1))
                 grads[lname] = torch.cat(grads[lname]).to(device)
                 s = torch.norm(grads[lname] / Fisher_inv[lname]).detach().cpu()
-                if i == 0:
+                try:
+                    score[lname].append(s.numpy())
+                except:
                     score[lname] = []
-                score[lname].append(s.numpy())
+                    score[lname].append(s.numpy())
                 
         if i >= max_iter - 1:
             break
@@ -155,7 +165,11 @@ def AUTO_CNN(
     )
 
     for ood in opt.ood_list:
+        is_ID = False
+        if ood == opt.train_dist:
+            is_ID = True
         Gradients[ood] = Calculate_score_CNN(
+            is_ID,
             model,
             TEST_loader(
                 train_dist=opt.train_dist,
