@@ -70,11 +70,11 @@ if __name__=="__main__":
     parser.add_argument('--repeat', type=int, default=20)
     parser.add_argument('--ngpu'  , type=int, default=1, help='number of GPUs to use')
     
-    parser.add_argument('--state_E', default='../saved_models/VAE_cifar10/netE_pixel_nz_200_ngf_64_beta_1.0_epoch_200.pth', help='path to encoder checkpoint')
-    parser.add_argument('--state_G', default='../saved_models/VAE_cifar10/netG_pixel_nz_200_ngf_64_beta_1.0_epoch_200.pth', help='path to encoder checkpoint')
+    parser.add_argument('--state_E', default='../saved_models/VAE_cifar10/netE_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth', help='path to encoder checkpoint')
+    parser.add_argument('--state_G', default='../saved_models/VAE_cifar10/netG_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth', help='path to encoder checkpoint')
 
-    parser.add_argument('--state_E_bg', default='../saved_models/VAE_cifar10/LR/netE_pixel_LR_nz_200_ngf_64.pth', help='path to encoder checkpoint')
-    parser.add_argument('--state_G_bg', default='../saved_models/VAE_cifar10/LR/netG_pixel_LR_nz_200_ngf_64.pth', help='path to encoder checkpoint')
+    parser.add_argument('--state_E_bg', default='../saved_models/VAE_cifar10/LRatio/netE_bg_ngf_64_nz_200_beta_1.0_augment_hflip_decay_0_epoch_100.pth', help='path to encoder checkpoint')
+    parser.add_argument('--state_G_bg', default='../saved_models/VAE_cifar10/LRatio/netG_bg_ngf_64_nz_200_beta_1.0_augment_hflip_decay_0_epoch_100.pth', help='path to encoder checkpoint')
 
     opt = parser.parse_args()
     
@@ -161,27 +161,26 @@ if __name__=="__main__":
         weights_agg  = []
         weights_agg_bg = []
         with torch.no_grad():
-            for batch_number in range(10):
             
-                x = x.to(device)
-                b = x.size(0)
-        
-                [z,mu,logvar] = netE(x)
-                recon = netG(z)
-                mu = mu.view(mu.size(0),mu.size(1))
-                logvar = logvar.view(logvar.size(0), logvar.size(1))
-                z = z.view(z.size(0),z.size(1))
-                weights = store_NLL(x, recon, mu, logvar, z)
-                weights_agg.append(weights)
-                
-                [z_bg,mu_bg,logvar_bg] = netE_bg(x)
-                recon_bg = netG_bg(z_bg)
-                mu_bg = mu_bg.view(mu_bg.size(0),mu_bg.size(1))
-                logvar_bg = logvar_bg.view(logvar_bg.size(0), logvar_bg.size(1))
-                z_bg = z_bg.view(z_bg.size(0),z_bg.size(1))
-                weights_bg = store_NLL(x, recon_bg, mu_bg, logvar_bg, z_bg)
-               
-                weights_agg_bg.append(weights_bg)
+            x = x.to(device)
+            b = x.size(0)
+
+            [z,mu,logvar] = netE(x)
+            recon = netG(z)
+            mu = mu.view(mu.size(0),mu.size(1))
+            logvar = logvar.view(logvar.size(0), logvar.size(1))
+            z = z.view(z.size(0),z.size(1))
+            weights = store_NLL(x, recon, mu, logvar, z)
+            weights_agg.append(weights)
+
+            [z_bg,mu_bg,logvar_bg] = netE_bg(x)
+            recon_bg = netG_bg(z_bg)
+            mu_bg = mu_bg.view(mu_bg.size(0),mu_bg.size(1))
+            logvar_bg = logvar_bg.view(logvar_bg.size(0), logvar_bg.size(1))
+            z_bg = z_bg.view(z_bg.size(0),z_bg.size(1))
+            weights_bg = store_NLL(x, recon_bg, mu_bg, logvar_bg, z_bg)
+
+            weights_agg_bg.append(weights_bg)
             
             weights_agg = torch.stack(weights_agg).view(-1) 
             weights_agg_bg = torch.stack(weights_agg_bg).view(-1)
@@ -212,25 +211,24 @@ if __name__=="__main__":
         weights_agg  = []
         weights_agg_bg = []
         with torch.no_grad():
-            for batch_number in range(5):
-                x = x.to(device)
-                b = x.size(0)
-                
-                [z,mu,logvar] = netE(x)
-                recon = netG(z)
-                mu = mu.view(mu.size(0),mu.size(1))
-                logvar = logvar.view(logvar.size(0), logvar.size(1))
-                z = z.view(z.size(0),z.size(1))
-                weights = store_NLL(x, recon, mu, logvar, z)
-                weights_agg.append(weights)
-                
-                [z_bg,mu_bg,logvar_bg] = netE_bg(x)
-                recon_bg = netG_bg(z_bg)
-                mu_bg = mu_bg.view(mu_bg.size(0),mu_bg.size(1))
-                logvar_bg = logvar_bg.view(logvar_bg.size(0), logvar_bg.size(1))
-                z_bg = z_bg.view(z_bg.size(0),z_bg.size(1))
-                weights_bg = store_NLL(x, recon_bg, mu_bg, logvar_bg, z_bg)
-                weights_agg_bg.append(weights_bg)
+            x = x.to(device)
+            b = x.size(0)
+
+            [z,mu,logvar] = netE(x)
+            recon = netG(z)
+            mu = mu.view(mu.size(0),mu.size(1))
+            logvar = logvar.view(logvar.size(0), logvar.size(1))
+            z = z.view(z.size(0),z.size(1))
+            weights = store_NLL(x, recon, mu, logvar, z)
+            weights_agg.append(weights)
+
+            [z_bg,mu_bg,logvar_bg] = netE_bg(x)
+            recon_bg = netG_bg(z_bg)
+            mu_bg = mu_bg.view(mu_bg.size(0),mu_bg.size(1))
+            logvar_bg = logvar_bg.view(logvar_bg.size(0), logvar_bg.size(1))
+            z_bg = z_bg.view(z_bg.size(0),z_bg.size(1))
+            weights_bg = store_NLL(x, recon_bg, mu_bg, logvar_bg, z_bg)
+            weights_agg_bg.append(weights_bg)
             
             weights_agg = torch.stack(weights_agg).view(-1) 
             weights_agg_bg = torch.stack(weights_agg_bg).view(-1)
@@ -248,14 +246,3 @@ if __name__=="__main__":
     NLL_test_ood_bg = np.asarray(NLL_test_ood_bg)
     metric_ood = -NLL_test_ood + NLL_test_ood_bg
     np.save('./array/like_ratio/metric_ood.npy', metric_ood)
-            
-    
-
-      
-
-
-
-
-    
-        
-    

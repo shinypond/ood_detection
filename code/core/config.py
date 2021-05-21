@@ -7,17 +7,17 @@ class VAE_cifar10:
                 'svhn',
                 'celeba',
                 'lsun',
-                'cifar100',
+                #'cifar100',
                 'mnist',
                 'fmnist',
-                'kmnist',
-                'omniglot',
+                #'kmnist',
+                #'omniglot',
                 'notmnist',
-                'trafficsign',
+                #'trafficsign',
                 'noise',
                 'constant',
                ]
-    dataroot = '../data'
+    dataroot = '../../data'
     modelroot = '../saved_models'
     workers = 2
     imageSize = 32
@@ -44,7 +44,7 @@ class VAE_fmnist:
                 'notmnist',
                 'noise',
                 'constant']
-    dataroot = '../data'
+    dataroot = '../../data'
     modelroot = '../saved_models'
     workers = 2
     imageSize = 32
@@ -63,15 +63,15 @@ class GLOW_cifar10:
                 'svhn',
                 'celeba',
                 'lsun',
-                #'cifar100',
-                #'mnist',
-                #'fmnist',
-                #'kmnist',
-                #'omniglot',
-                #'notmnist',
-                #'trafficsign',
-                #'noise',
-                #'constant',
+                'cifar100',
+                'mnist',
+                'fmnist',
+                'kmnist',
+                'omniglot',
+                'notmnist',
+                'trafficsign',
+                'noise',
+                'constant',
                ]
     dataroot = '../data'
     modelroot = '../saved_models'
@@ -108,18 +108,18 @@ class GLOW_cifar10:
 class GLOW_fmnist:
     train_dist = 'fmnist'
     ood_list = ['fmnist',
-                #'svhn',
-                #'celeba',
-                #'lsun',
-                #'cifar10',
-                #'cifar100',
+                'svhn',
+                'celeba',
+                'lsun',
+                'cifar10',
+                'cifar100',
                 'mnist',
                 'kmnist',
-                #'omniglot',
+                'omniglot',
                 'notmnist',
                 'noise',
                 'constant']
-    dataroot = '../data'
+    dataroot = '../../data'
     modelroot = '../saved_models'
     resume_train = False
     download = False
@@ -129,8 +129,8 @@ class GLOW_fmnist:
     epochs = 250
     seed = 0
     hidden_channels = 200
-    K = 8
-    L = 3
+    K = 16
+    L = 2
     actnorm_scale = 1.0
     flow_permutation = "invconv" # invconv, shuffle, reverse
     flow_coupling = "affine" # affine, additive

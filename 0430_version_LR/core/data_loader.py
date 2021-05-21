@@ -119,8 +119,7 @@ def TEST_loader(train_dist='cifar10', target_dist='cifar10', batch_size=1, shuff
                     - omniglot (eval) 
                     - notmnist (small)
                     - noise
-                    - constant
-    
+                    - constant    
     """
     
     preprocess = []

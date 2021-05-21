@@ -79,7 +79,7 @@ def load_pretrained_GLOW(option='cifar10'):
     )
     
     # trained by BJW (same to "Do generative models know what they don't know")
-    model_path = f'{opt.modelroot}/GLOW_{option}/glow_{option}.pt'
+    model_path = f'{opt.modelroot}/GLOW_{opt.train_dist}/glow_{opt.train_dist}.pt'
     model.load_state_dict(torch.load(model_path)['model']) # there are two keys: 'model', 'optimizer'
     
     # original GLOW model (same to "GLOW" by Kingma)

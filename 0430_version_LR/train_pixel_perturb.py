@@ -1,7 +1,8 @@
-
 import argparse
 import random
 import numpy as np
+import matplotlib.pyplot as plt
+from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -11,9 +12,24 @@ import torch.utils.data
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 from torch.autograd import Variable
-import DCGAN_VAE_pixel as DVAE
 import torch.nn.functional as F
+import os, sys
+#from pathlib import Path
+#path = Path(os.getcwd()).parent.parent / 'core'
+#sys.path.append(str(path))
+import DCGAN_VAE_pixel as DVAE
 import matplotlib.pyplot as plt
+
+def plot_loss(dataset_name, history, epoch):
+    
+    x = range(len(history))
+    y = np.array(history)
+    fig = plt.figure(figsize=(16, 9))
+    plt.plot(x, y, label='total loss')
+    plt.grid()
+    plt.legend()
+    fig.savefig(f'./temp/{dataset_name}_loss_graph_epoch_{epoch}.png')
+    
 
 def KL_div(mu,logvar,reduction = 'avg'):
     mu = mu.view(mu.size(0),mu.size(1))
@@ -24,70 +40,120 @@ def KL_div(mu,logvar,reduction = 'avg'):
         KL = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(),1) 
         return KL
 
-
-def perturb(x, mu,device):
-    b,c,h,w = x.size()
-    mask = torch.rand(b,c,h,w)<mu
+def perturb(x, mu, device):
+    b, c, h, w = x.size()
+    mask = torch.rand(b, c, h, w) < mu
     mask = mask.float().to(device)
     noise = torch.FloatTensor(x.size()).random_(0, 256).to(device)
-    x = x*255
-    perturbed_x = ((1-mask)*x + mask*noise)/255.
+    x = x * 255
+    perturbed_x = ((1 - mask) * x + mask * noise)/255.
     return perturbed_x
 
-
-if __name__=="__main__":
+def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataroot', default='../data', help='path to dataset')
-    parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
+    parser.add_argument('--workers', type=int, help='number of data loading workers', default=0)
     parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
     parser.add_argument('--imageSize', type=int, default=32, help='the height / width of the input image to network')
     parser.add_argument('--nc', type=int, default=3, help='input image channels')
     parser.add_argument('--nz', type=int, default=200, help='size of the latent z vector')
     parser.add_argument('--ngf', type=int, default=64, help = 'hidden channel sieze')
     parser.add_argument('--niter', type=int, default=200, help='number of epochs to train for')
-    parser.add_argument('--lr', type=float, default=5e-4, help='learning rate')
-
-    parser.add_argument('--beta', type=float, default=1., help='beta for beta-vae')
-
-    parser.add_argument('--ngpu'  , type=int, default=1, help='number of GPUs to use')
-    parser.add_argument('--experiment', default=None, help='Where to store samples and models')
-    parser.add_argument('--ratio', type=float, default=0.2, help='ratio for perturbation of data, see Ren et al.')
-
-    opt = parser.parse_args()
+    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
     
+    parser.add_argument('--beta1', type=float, default=0.9, help='beta1 for adam. default=0.9')
+    parser.add_argument('--beta', type=float, default=1., help='beta for beta-vae')
+    
+    parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
+    #parser.add_argument('--experiment', default=None, help='Where to store samples and models')
+    parser.add_argument('--perturbed', action=None, help='Whether to train on perturbed data, used for comparing with likelihood ratio by Ren et al.')
+    parser.add_argument('--ratio', type=float, default=0.2, help='ratio for perturbation of data, see Ren et al.')
+    parser.add_argument('--weight_decay', type=float, default=0, help='weight decay')
+    
+    opt = parser.parse_args()
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-
-    if opt.experiment is None:
-        opt.experiment = './models/cifar'
+    
     opt.manualSeed = random.randint(1, 10000) # fix seed
     print("Random Seed: ", opt.manualSeed)
     random.seed(opt.manualSeed)
     torch.manual_seed(opt.manualSeed)
-
     cudnn.benchmark = True
-
-    dataset = dset.CIFAR10(root=opt.dataroot, download=True,train = True,
-                           transform=transforms.Compose([
-                               transforms.Resize((opt.imageSize)),
-                               transforms.ToTensor(),
-                           ]))
-    dataloader_cifar = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
-                                           shuffle=True, num_workers=int(opt.workers))
     
-#     dataset_fmnist_train = dset.FashionMNIST(root=opt.dataroot, train=True, download=True, transform=transforms.Compose([
-#                                 transforms.Resize((opt.imageSize)),
-#                                 transforms.ToTensor(),
-#                             ]))
-#     dataloader_fmnist = torch.utils.data.DataLoader(dataset_fmnist_train, batch_size=opt.batchSize,
-#                                             shuffle=True, num_workers=int(opt.workers))
     
-
+    # Ask train-dataset (1) CIFAR-10 (2) FMNIST 
+    
+    traindist = input('Q. Which dataset do you want to train the model for??\n(1) CIFAR-10 (2) FMNIST (Press 1 or 2)\n')
+    augment = input('Q. Apply data augmentation?\n(1) None (2) hflip (Press 1 or 2)\n')
+    
+    if augment == '1':
+        opt.augment = 'None'
+        transform = transforms.Compose([
+            transforms.Resize((opt.imageSize, opt.imageSize)),
+            transforms.ToTensor(),
+        ])
+    elif augment == '2':
+        opt.augment = 'hflip'
+        transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.Resize((opt.imageSize, opt.imageSize)),
+            transforms.ToTensor(),
+        ])
+        # if you want to add other augmentations, then append them at this point!
+    else:
+        raise ValueError('Oops! Please insert 1 or 2. Bye~')
+    
+    if traindist == '1':
+        opt.nc = 3
+        opt.niter = 200
+        opt.ngf = 64
+        opt.train_dist = 'cifar10'
+        experiment = '../saved_models/VAE_cifar10/LRatio'
+        dataset = dset.CIFAR10(
+            root=opt.dataroot,
+            download=False,
+            train=True,
+            transform=transform,
+        )
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=opt.batchSize,
+            shuffle=True,
+            num_workers=int(opt.workers),
+        )
+    elif traindist == '2':
+        opt.nc = 1
+        opt.niter = 100
+        opt.ngf = 32
+        opt.train_dist = 'fmnist'
+        experiment = '../saved_models/VAE_fmnist/LRatio'
+        dataset = dset.FashionMNIST(
+            root=opt.dataroot,
+            download=False,
+            train=True,
+            transform=transform,
+        )
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=opt.batchSize,
+            shuffle=True,
+            num_workers=int(opt.workers)
+        )
+    else:
+        raise ValueError('Oops! Please insert 1 or 2. Bye~')
+        
+    name = experiment.split('/')[-1] # This is 'VAE_cifar10' or 'VAE_fmnist'
+    print(f'Dataloader for {name} is ready !')
+    print(f'Please see the path "{experiment}" for the saved model !')
+    
+    
     ngpu = int(opt.ngpu)
     nz = int(opt.nz)
     ngf = int(opt.ngf)
     nc = int(opt.nc)
-
+    print(f'Channel {nc}')
+    beta = opt.beta
+    
     # custom weights initialization called on netG and netD
     def weights_init(m):
         classname = m.__class__.__name__
@@ -102,14 +168,16 @@ if __name__=="__main__":
 
     netE = DVAE.Encoder(opt.imageSize, nz, nc, ngf, ngpu)
     netE.apply(weights_init)
-
     
     netE.to(device)
     netG.to(device)
+    
     # setup optimizer
     
-    optimizer1 = optim.Adam(netE.parameters(), lr=opt.lr, weight_decay = 10)
-    optimizer2 = optim.Adam(netG.parameters(), lr=opt.lr, weight_decay = 10)
+    optimizer1 = optim.Adam(netE.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
+    optimizer2 = optim.Adam(netG.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
+    scheduler1 = optim.lr_scheduler.StepLR(optimizer1, step_size=30, gamma=0.5)
+    scheduler2 = optim.lr_scheduler.StepLR(optimizer2, step_size=30, gamma=0.5)
 
     netE.train()
     netG.train()
@@ -117,28 +185,26 @@ if __name__=="__main__":
     loss_fn = nn.CrossEntropyLoss(reduction = 'none')
     rec_l = []
     kl = []
-    tloss = []
+    history = []
+    start = datetime.today()
     for epoch in range(opt.niter):
-        for i, (x, _) in enumerate(dataloader_cifar):
+        mean_loss = 0.0
+        for i, (x, _) in enumerate(dataloader):
             x = x.to(device)
             x = perturb(x, opt.ratio, device)
-            plt.imshow(x[0].permute(1,2,0).detach().cpu())
-            plt.show()
-
             b = x.size(0)
             target = Variable(x.data.view(-1) * 255).long()
-            [z,mu,logvar] = netE(x)
+            [z, mu, logvar] = netE(x)
             recon = netG(z)
             
             recon = recon.contiguous()
-            recon = recon.view(-1,256)
+            recon = recon.view(-1, 256)
             recl = loss_fn(recon, target)
             recl = torch.sum(recl) / b
-            kld = KL_div(mu,logvar)
+            kld = KL_div(mu, logvar)
             
-            loss =  recl + opt.beta*kld.mean()
+            loss = recl + opt.beta * kld.mean()
             
-                
             optimizer1.zero_grad()
             optimizer2.zero_grad()
             total_loss = loss
@@ -149,10 +215,22 @@ if __name__=="__main__":
             optimizer2.step()
             rec_l.append(recl.detach().item())
             kl.append(kld.mean().detach().item())
-            tloss.append(loss.detach().item())
-           
+            mean_loss = (mean_loss * i + loss.detach().item()) / (i + 1)
+        
             if not i % 100:
-                print('epoch:{} recon:{} kl:{}'.format(epoch,np.mean(rec_l),np.mean(kl)
-                    ))
-    torch.save(netG.state_dict(), '../saved_models/VAE_cifar10/LR/netG_pixel_LR_nz_{}_ngf_{}.pth'.format(nz, ngf))
-    torch.save(netE.state_dict(), '../saved_models/VAE_cifar10/LR/netE_pixel_LR_nz_{}_ngf_{}.pth'.format(nz, ngf))
+                print(f'epoch:{epoch} recon:{np.mean(rec_l):.6f} kl:{np.mean(kl):.6f}')
+        
+        history.append(mean_loss)
+        scheduler1.step()
+        scheduler2.step()
+        now = datetime.today()
+        print(f'\nNOW : {now:%Y-%m-%d %H:%M:%S}, Elapsed Time : {now - start}\n')
+        if epoch%50 == 49:
+            torch.save(netE.state_dict(), experiment + f'/netE_bg_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_decay_{opt.weight_decay}_epoch_{epoch+1}.pth')
+            torch.save(netG.state_dict(), experiment + f'/netG_bg_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_decay_{opt.weight_decay}_epoch_{epoch+1}.pth')
+    torch.save(netE.state_dict(), experiment + f'/netE_bg_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_decay_{opt.weight_decay}_decay_{opt.weight_decay}_epoch_{opt.niter}.pth')
+    torch.save(netG.state_dict(), experiment + f'/netG_bg_ngf_{ngf}_nz_{nz}_beta_{beta:.1f}_augment_{opt.augment}_decay_{opt.weight_decay}_epoch_{opt.niter}.pth')
+    
+
+if __name__=="__main__":
+    main()

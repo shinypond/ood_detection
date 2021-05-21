@@ -11,10 +11,9 @@ def plot_roc_curve(fpr, tpr):
     plt.legend()
     plt.show()
 
-regret_indist = np.load('./array/indist_regret.npy')#np.load('./array/like_ratio/metric_indist.npy')
-regret_ood = np.load('./array/ood_regret.npy') #np.load('./array/like_ratio/metric_ood.npy')
-# print(regret_indist)
-# print(regret_ood)
+regret_indist = np.load('./array/LR(E)/cifar10_cifar10_regret.npy')
+regret_ood = np.load('./array/LR(E)/cifar10_svhn_regret.npy') 
+
 combined = np.concatenate((regret_indist, regret_ood))
 label_1 = np.ones(len(regret_indist))
 label_2 = np.zeros(len(regret_ood))
@@ -22,26 +21,5 @@ label = np.concatenate((label_1, label_2))
 
 fpr, tpr, thresholds = metrics.roc_curve(label, combined, pos_label=0)
 
-#plot_roc_curve(fpr, tpr)
-
 rocauc = metrics.auc(fpr, tpr)
 print('AUC for likelihood regret is: ', rocauc)
-
-
-
-
-nll_cifar = np.load('./array/indist_nll.npy')
-nll_svhn = np.load('./array/ood_nll.npy')
-
-combined = np.concatenate((nll_cifar, nll_svhn))
-label_1 = np.ones(len(nll_cifar))
-label_2 = np.zeros(len(nll_svhn))
-label = np.concatenate((label_1, label_2))
-
-fpr, tpr, thresholds = metrics.roc_curve(label, combined, pos_label=0)
-
-#plot_roc_curve(fpr, tpr)
-
-rocauc = metrics.auc(fpr, tpr)
-print('AUC for nll is: ', rocauc)
-
