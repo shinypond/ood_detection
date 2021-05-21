@@ -151,6 +151,8 @@ def AUTO_CNN(
     
     """ Automated for convenience ! """
     
+    assert opt.dataroot == '../data', 'please go config.py and modify dataroot to "../../data"'
+    
     Gradients = {}
     
     Fisher_inv, normalize_factor = Calculate_fisher_CNN(

@@ -1,5 +1,7 @@
 import numpy as np
 from tqdm import tqdm
+from datetime import datetime
+from datetime import timedelta
 # If you use jupyter lab, then install @jupyter-widgets/jupyterlab-manager and restart server
 
 import torch
@@ -164,6 +166,7 @@ def Calculate_score_VAE(
     optimizer2 = optim.SGD(netG.parameters(), lr=0, momentum=0) # no learning
     grads = {}
     score = {}
+    start = datetime.now()
         
     for i, x in enumerate(tqdm(dataloader, desc='Calculate Score VAE', unit='step')):
         
@@ -210,6 +213,7 @@ def Calculate_score_VAE(
                 if i == 0:
                     score[pname] = []
                 score[pname].append(s)
+            end = datetime.now()
                 
         elif method == 'Vanilla':
             for pname, param in params.items():
@@ -221,11 +225,13 @@ def Calculate_score_VAE(
                 
         if i >= max_iter - 1:
             break
+    end = datetime.now()
+    avg_time = (end - start) / max_iter
             
     for pname, _ in params.items():
         score[pname] = np.array(score[pname]) / normalize_factor[pname]
             
-    return score
+    return score, avg_time
 
 
 def AUTO_VAE(
@@ -240,6 +246,8 @@ def AUTO_VAE(
     
     """ Automated for convenience ! """
     """ loss_type : SHOULD BE 'ELBO_pixel' or 'exact' """
+    
+    assert opt.dataroot == '../data', 'please go config.py and modify dataroot to "../../data"'
     
     Gradients = {}
     
@@ -258,7 +266,7 @@ def AUTO_VAE(
     )
 
     for ood in opt.ood_list:
-        Gradients[ood] = Calculate_score_VAE(
+        Gradients[ood], avg_time = Calculate_score_VAE(
             netE,
             netG,
             TEST_loader(
@@ -275,8 +283,10 @@ def AUTO_VAE(
             loss_type=loss_type,
             method=method,
         )
+        if ood == opt.train_dist:
+            TIME = avg_time
     
-    return Fisher_inv, normalize_factor, Gradients
+    return Fisher_inv, normalize_factor, Gradients, TIME
 
 
 

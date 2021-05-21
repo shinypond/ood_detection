@@ -187,6 +187,8 @@ def AUTO_GLOW(
     
     """ Automated for convenience ! """
     
+    assert opt.dataroot == '../data', 'please go config.py and modify dataroot to "../../data"'
+    
     Gradients = {}
     
     Fisher_inv, normalize_factor = Calculate_fisher_GLOW(

@@ -95,8 +95,6 @@ if __name__=="__main__":
     print('Q. Test Num?')
     test_num = int(input('-> '))
         
-    opt.num_iter = 100
-    opt.beta1 = 0.9
     ngpu = int(opt.ngpu)
     nz = int(opt.nz)
     ngf = int(opt.ngf)
@@ -116,20 +114,24 @@ if __name__=="__main__":
     netE.eval()
     
     loss_fn = nn.CrossEntropyLoss(reduction = 'none')
-    
-########################################################################
+
+    '''
+    ########################################################################
     id_dataloader = TEST_loader(
         train_dist=opt.train_dist,
         target_dist=opt.train_dist,
         shuffle=True,
         is_glow=False,
     )
-        
+
     Complexity = []
     difference = []
+    acc_time = timedelta(0)
     i = 0
-    while i < test_num:
-        x = next(iter(id_dataloader))
+    #while i < test_num:
+    start = datetime.now()
+    for i, x in enumerate(id_dataloader):
+        #x = next(iter(id_dataloader))
         try:
             x, _ = x
         except:
@@ -163,37 +165,46 @@ if __name__=="__main__":
             Complexity.append(L)
             difference.append(NLL_loss - L)
             print(f'{opt.train_dist} VAE: image {i} IC loss {NLL_loss - L:.2f}')
-        i += 1
 
+        if i >= test_num:
+            break
+        #i += 1
+
+    end = datetime.now()
+    acc_time = end - start
     difference = np.asarray(difference)
-    
-    np.save(f'../npy/IC({opt.ic_type})/{opt.train_dist}_{opt.train_dist}.npy', difference)
-    print(f'SAVED In-dist IC npy !')
-########################################################################
+    acc_time = acc_time.total_seconds()
+    print(f'Average Inference Time {acc_time / test_num}')
+    print(f'Processed Images per Second {test_num / acc_time:.2f}')
+
+    #np.save(f'../npy/IC({opt.ic_type})/{opt.train_dist}_{opt.train_dist}.npy', difference)
+    #print(f'SAVED In-dist IC npy !')
+    #assert 0==1
+    ########################################################################
+    '''
     dataloaders = []
     for ood in opt.ood_list:
-        loader = TEST_loader(
-            train_dist=opt.train_dist,
-            target_dist=ood,
-            shuffle=True,
-            is_glow=False,
-        )
-        dataloaders.append(loader)
+        if ood != opt.train_dist:
+            loader = TEST_loader(
+                train_dist=opt.train_dist,
+                target_dist=ood,
+                shuffle=True,
+                is_glow=False,
+            )
+            dataloaders.append(loader)
         
     Complexity = []
     difference = []
     loader_idx_list = np.random.randint(0, len(dataloaders), size=test_num)
-    acc_time = timedelta(0)
     i = 0
     while i < test_num:
         x = next(iter(dataloaders[loader_idx_list[i]]))
-        ood = opt.ood_list[loader_idx_list[i]]
+        ood = opt.ood_list[loader_idx_list[i]+1]
         print(f'Selected OOD : {ood}')
         try:
             x, _ = x
         except:
             pass
-        start = datetime.now()
         x = x.expand(opt.repeat, -1, -1, -1).contiguous()
         weights_agg  = []
         with torch.no_grad():
@@ -222,14 +233,9 @@ if __name__=="__main__":
             L = len(img_encoded[1]) * 8
             Complexity.append(L)
             difference.append(NLL_loss - L)
-            end = datetime.now()
-            acc_time += (end - start)
-            print(f'{ood} VAE: image {i} IC loss {NLL_loss - L:.2f} Time {end - start}')
+            print(f'{ood} VAE: image {i} IC loss {NLL_loss - L:.2f}')
         i += 1
 
-    acc_time = acc_time.total_seconds()
-    print(f'Average Inference Time {acc_time / test_num}')
-    print(f'Processed Images per Second {test_num / acc_time:.2f}')
     difference = np.asarray(difference)
     
     np.save(f'../npy/IC({opt.ic_type})/{opt.train_dist}_random_ood.npy', difference)

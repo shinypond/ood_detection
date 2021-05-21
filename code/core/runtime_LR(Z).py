@@ -103,8 +103,8 @@ if __name__=="__main__":
     netE.eval()
 
     loss_fn = nn.CrossEntropyLoss(reduction = 'none')
-    
-##################################################################
+    """
+    ##################################################################
     id_dataloader = TEST_loader(
         train_dist=opt.train_dist,
         target_dist=opt.train_dist,
@@ -114,9 +114,9 @@ if __name__=="__main__":
         
     NLL_regret = []
     NLL = []
+    start = datetime.now()
     i = 0
-    while i < test_num:
-        xi = next(iter(id_dataloader))
+    for i, xi in enumerate(id_dataloader):
         try:
             xi, _ = xi
         except:
@@ -178,35 +178,42 @@ if __name__=="__main__":
             regret = NLL_loss_before  - NLL_loss_after
             print(f'{opt.train_dist} image {i} OPT: {NLL_loss_after.item()} VAE: {NLL_loss_before.item()} diff:{NLL_loss_before.item() - NLL_loss_after.item()}')
             NLL_regret = np.append(NLL_regret, regret.detach().cpu().numpy())
-        i += 1
+        if i >= test_num:
+            break
     
-    np.save(f'../npy/LR(Z)/{opt.train_dist}_{opt.train_dist}.npy', NLL_regret)
-    print(f'SAVED In-dist REGRET npy !')
-##################################################################
+    end = datetime.now()
+    acc_time = end - start
+    acc_time = acc_time.total_seconds()
+    print(f'Average Inference Time {acc_time / test_num}')
+    print(f'Processed Images per Second {test_num / acc_time:.2f}')
+    #np.save(f'../npy/LR(Z)/{opt.train_dist}_{opt.train_dist}.npy', NLL_regret)
+    #print(f'SAVED In-dist REGRET npy !')
+    #assert 0==1
+    ##############################################################
+    """
     dataloaders = []
     for ood in opt.ood_list:
-        loader = TEST_loader(
-            train_dist=opt.train_dist,
-            target_dist=ood,
-            shuffle=True,
-            is_glow=False,
-        )
-        dataloaders.append(loader)
+        if ood != opt.train_dist:
+            loader = TEST_loader(
+                train_dist=opt.train_dist,
+                target_dist=ood,
+                shuffle=True,
+                is_glow=False,
+            )
+            dataloaders.append(loader)
         
     NLL_regret = []
     NLL = []
     loader_idx_list = np.random.randint(0, len(dataloaders), size=test_num)
-    acc_time = timedelta(0)
     i = 0
     while i < test_num:
         xi = next(iter(dataloaders[loader_idx_list[i]]))
-        ood = opt.ood_list[loader_idx_list[i]]
+        ood = opt.ood_list[loader_idx_list[i]+1]
         print(f'Selected OOD : {ood}')
         try:
             xi, _ = xi
         except:
             pass
-        start = datetime.now()
         x = xi.expand(opt.repeat,-1,-1,-1).contiguous()
         weights_agg  = []
         with torch.no_grad():
@@ -262,15 +269,10 @@ if __name__=="__main__":
             weights_agg = torch.stack(weights_agg).view(-1) 
             NLL_loss_after = compute_NLL(weights_agg) 
             regret = NLL_loss_before  - NLL_loss_after
-            end = datetime.now()
-            acc_time += (end - start)
-            print(f'{ood} image {i} OPT: {NLL_loss_after.item()} VAE: {NLL_loss_before.item()} diff:{NLL_loss_before.item() - NLL_loss_after.item()} Time {end - start}')
+            print(f'{ood} image {i} OPT: {NLL_loss_after.item()} VAE: {NLL_loss_before.item()} diff:{NLL_loss_before.item() - NLL_loss_after.item()}')
             NLL_regret = np.append(NLL_regret, regret.detach().cpu().numpy())
         i += 1
     
-    acc_time = acc_time.total_seconds()
-    print(f'Average Inference Time {acc_time / test_num}')
-    print(f'Processed Images per Second {test_num / acc_time:.2f}')
 
     np.save(f'../npy/LR(Z)/{opt.train_dist}_random_ood.npy', NLL_regret)
     print(f'SAVED OOD REGRET npy !')
