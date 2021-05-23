@@ -1,4 +1,6 @@
 import numpy as np
+import random
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 # If you use jupyter lab, then install @jupyter-widgets/jupyterlab-manager and restart server
 
@@ -9,6 +11,10 @@ from torch.autograd import Variable
 
 import config
 from data_loader import TRAIN_loader, TEST_loader
+# fix a random seed
+random.seed(2021)
+np.random.seed(2021)
+torch.manual_seed(2021)
 
 def Calculate_fisher_GLOW(
     model,
@@ -69,7 +75,15 @@ def Calculate_fisher_GLOW(
         elif method == 'Vanilla':
             grads = {}
             for pname, param in params.items():
-                grads[pname] = param.grad.view(-1) ** 2
+                grads[pname] = []
+                for p in param.parameters():
+                    grads[pname].append(p.grad.view(-1))
+                grads[pname] = torch.cat(grads[pname], dim=0)
+                a = np.array((torch.abs(grads[pname]) <= 3e-8).detach().cpu().numpy(), dtype=np.int)
+                print(a.sum())
+                plt.scatter(range(grads[pname].size()[0]), a, s=1)
+                plt.show()
+                #grads[pname] = param.grad.view(-1) ** 2
                 if i == 0:
                     Fisher_inv[pname] = grads[pname]
                 else:
@@ -91,8 +105,8 @@ def Calculate_fisher_GLOW(
         normalize_factor = {}
         for pname, _ in params.items():
             Fisher_inv[pname] = torch.sqrt(Fisher_inv[pname])
-            Fisher_inv[pname] = Fisher_inv[pname] * (Fisher_inv[pname] > 1e-8)
-            Fisher_inv[pname][Fisher_inv[pname]==0] = 1e-8
+            Fisher_inv[pname] = Fisher_inv[pname] * (Fisher_inv[pname] > 1e-15)
+            Fisher_inv[pname][Fisher_inv[pname]==0] = 1e-15
             normalize_factor[pname] = 2 * np.sqrt(len(Fisher_inv[pname]))
         
     return Fisher_inv, normalize_factor

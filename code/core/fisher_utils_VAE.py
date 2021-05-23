@@ -1,7 +1,9 @@
 import numpy as np
+import random
 from tqdm import tqdm
 from datetime import datetime
 from datetime import timedelta
+import matplotlib.pyplot as plt
 # If you use jupyter lab, then install @jupyter-widgets/jupyterlab-manager and restart server
 
 import torch
@@ -12,6 +14,188 @@ from torch.autograd import Variable
 from custom_loss import VAE_loss_pixel, loglikelihood
 import config
 from data_loader import TRAIN_loader, TEST_loader
+
+# fix a random seed
+random.seed(2021)
+np.random.seed(2021)
+torch.manual_seed(2021)
+
+def Calculate_fisher_VAE_ekfac(
+    netE,
+    netG,
+    dataloader,
+    params,
+    opt,
+    max_iter,
+    loss_type='ELBO_pixel',):
+    
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    netE.eval()
+    netG.eval()
+    optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
+    optimizer2 = optim.SGD(netG.parameters(), lr=0, momentum=0) # no learning
+    Fisher_inv = {}
+    normalize_factor = {}
+    grads = {}
+    count = 0
+    
+    for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate A, B', unit='step')):
+        
+        optimizer1.zero_grad()
+        optimizer2.zero_grad()
+        x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
+        [z, mu, logvar, pre_mu] = netE(x)
+        mu = Variable(mu, requires_grad=True)
+        
+        if opt.num_samples == 1:
+            recon = netG(mu)
+        elif opt.num_samples > 1:
+            recon = netG(z)
+        else:
+            raise ValueError
+        
+        recon = recon.contiguous()
+        
+        if loss_type == 'ELBO_pixel':
+            loss = VAE_loss_pixel(x, [recon, mu, logvar])
+        elif loss_type == 'exact':
+            loss = loglikelihood(x, z, [recon, mu, logvar])
+        else:
+            raise ValueError
+            
+        loss.backward(retain_graph=True)
+        
+        if i == 0:
+            A = torch.mm(pre_mu.view(-1, 1), pre_mu.view(1, -1))
+            B = torch.mm(mu.grad.view(-1, 1), mu.grad.view(1, -1))
+        else:
+            A = (i * A + torch.mm(pre_mu.view(-1, 1), pre_mu.view(1, -1))) / (i + 1)
+            B = (i * B + torch.mm(mu.grad.view(-1, 1), mu.grad.view(1, -1))) / (i + 1)
+        
+        if i >= max_iter - 1:
+            break
+            
+    _, U_A = torch.symeig(A, eigenvectors=True)
+    _, U_B = torch.symeig(B, eigenvectors=True)
+    
+    S = 0
+    
+    for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher VAE by EKFAC', unit='step')):
+        optimizer1.zero_grad()
+        optimizer2.zero_grad()
+        x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
+        [z, mu, logvar, pre_mu] = netE(x)
+        
+        if opt.num_samples == 1:
+            recon = netG(mu)
+        elif opt.num_samples > 1:
+            recon = netG(z)
+        else:
+            raise ValueError
+        
+        recon = recon.contiguous()
+        
+        if loss_type == 'ELBO_pixel':
+            loss = VAE_loss_pixel(x, [recon, mu, logvar])
+        elif loss_type == 'exact':
+            loss = loglikelihood(x, z, [recon, mu, logvar])
+        else:
+            raise ValueError
+            
+        loss.backward(retain_graph=True)
+        
+        assert list(params.keys()) == ['Econv1_w']
+        param = params['Econv1_w']
+        
+        s = torch.mm(torch.mm(U_B.T, param.grad.view(param.shape[0], -1)), U_A).view(-1)
+        s = s ** 2
+        S = (i * S + s.clone().detach()) / (i + 1)
+        
+        if i >= max_iter - 1:
+            break
+        
+            
+    return U_A, U_B, S
+
+def Calculate_score_VAE_ekfac(
+    netE,
+    netG,
+    dataloader,
+    params,
+    opt,
+    U_A,
+    U_B,
+    S,
+    ood,
+    max_iter,
+    loss_type='ELBO_pixel',):
+    
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    netE.eval()
+    netG.eval()
+    optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
+    optimizer2 = optim.SGD(netG.parameters(), lr=0, momentum=0) # no learning
+    score = []
+    if ood == opt.train_dist: # i.e, In-dist(test)
+        start = datetime.now()
+        
+    for i, x in enumerate(tqdm(dataloader, desc='Calculate Score VAE', unit='step')):
+        
+        try: # with label (ex : cifar10, svhn and etc.)
+            x, _ = x
+        except: # without label (ex : celeba)
+            pass
+        
+        optimizer1.zero_grad()
+        optimizer2.zero_grad()
+        x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
+        gradient_val = 0
+        [z, mu, logvar, pre_mu] = netE(x)
+        
+        if opt.num_samples == 1:
+            recon = netG(mu)
+        elif opt.num_samples > 1:
+            recon = netG(z)
+        else:
+            raise ValueError
+            
+        recon = recon.contiguous()
+        
+        if loss_type == 'ELBO_pixel':
+            loss = VAE_loss_pixel(x, [recon, mu, logvar])
+        elif loss_type == 'exact':
+            loss = loglikelihood(x, z, [recon, mu, logvar])
+        else:
+            raise ValueError
+            
+        loss.backward(retain_graph=True)
+        
+        assert list(params.keys()) == ['Econv1_w']
+        param = params['Econv1_w']
+        
+        temp = torch.mm(torch.mm(U_B.T, param.grad.view(param.shape[0], -1)), U_A).view(-1, 1)
+        s = temp / (S.view(-1, 1) + 1e-8)
+        s = torch.mm(temp.T, s).detach().cpu().numpy().reshape(-1)
+        score.append(s)
+        
+        if i >= max_iter - 1:
+            break
+    
+    if ood == opt.train_dist:
+        end = datetime.now()
+        avg_time = (end - start).total_seconds() / max_iter
+        print(f'Average Inference Time : {avg_time} seconds')
+        print(f'Average #Images Processed : {1 / avg_time} Images')
+    
+    return np.array(score)
+        
+        
+            
+        
+        
+        
+        
+        
 
 
 def Calculate_fisher_VAE(
@@ -105,12 +289,31 @@ def Calculate_fisher_VAE(
                 Fisher_inv[pname] -= numer / denom
                 
         elif method == 'Vanilla':
+            #fig = plt.figure(figsize=(5, 3*len(params.keys())))
+            #fig.patch.set_facecolor((0.9, 0.9, 0.4))
+            #plt.title('Train')
+            #plt.axis('off')
+            #ax = fig.add_subplot(len(params.keys())+1, 1, 1)
+            #ax.imshow(x.to('cpu')[0].permute(1, 2, 0))
+            #ax.axis('off')
+            #j = 2
             for pname, param in params.items():
                 grads[pname] = param.grad.view(-1) ** 2
+                
+                #grad = grads[pname].detach().cpu().numpy()
+                #grad = grad[grad > 1e-11]
+                #ax = fig.add_subplot(len(params.keys())+1, 1, j)
+                #ax.hist(np.log(grad), bins=100, label=f'{pname} / {grad.shape[0]}')
+                #plt.legend(loc='upper left')
+                #j += 1
+                
                 if i == 0:
                     Fisher_inv[pname] = grads[pname]
                 else:
                     Fisher_inv[pname] = (i * Fisher_inv[pname] + grads[pname]) / (i + 1)
+                    
+            #fig.savefig(f'./dummy/{datetime.strftime(datetime.now(), "%Y-%m-%d-%H-%M-%S-%f")}_train.png')
+            #plt.show()
                     
         if i >= max_iter - 1:
             break
@@ -128,9 +331,9 @@ def Calculate_fisher_VAE(
             
     elif method == 'Vanilla':
         for pname, _ in params.items():
-            Fisher_inv[pname] = torch.sqrt(Fisher_inv[pname])
-            Fisher_inv[pname] = Fisher_inv[pname] * (Fisher_inv[pname] > 1e-3)
-            Fisher_inv[pname][Fisher_inv[pname]==0] = 1e-3
+            Fisher_inv[pname] = torch.sqrt(Fisher_inv[pname]) ** (0.25)
+            Fisher_inv[pname] = Fisher_inv[pname] * (Fisher_inv[pname] > 1e-8)
+            Fisher_inv[pname][Fisher_inv[pname]==0] = 1e-8
             normalize_factor[pname] = 2 * np.sqrt(len(Fisher_inv[pname]))
         
     return Fisher_inv, normalize_factor
@@ -145,6 +348,7 @@ def Calculate_score_VAE(
     Fisher_inv,
     normalize_factor,
     max_iter,
+    ood,
     loss_type='ELBO_pixel',
     method='SMW',):
     
@@ -216,13 +420,33 @@ def Calculate_score_VAE(
             end = datetime.now()
                 
         elif method == 'Vanilla':
+            #fig = plt.figure(figsize=(5, 3*len(params.keys())))
+            #fig.patch.set_facecolor((0.9, 0.9, 0.4))
+            #plt.title(f'{ood}')
+            #plt.axis('off')
+            #ax = fig.add_subplot(len(params.keys())+1, 1, 1)
+            #ax.imshow(x.to('cpu')[0].permute(1, 2, 0))
+            #ax.axis('off')
+            #j = 2
             for pname, param in params.items():
                 grads[pname] = param.grad.view(-1)
+                
+                #grad = grads[pname].detach().cpu().numpy()
+                #grad = grad[grad > 1e-11]
+                #ax = fig.add_subplot(len(params.keys())+1, 1, j)
+                #ax.hist(np.log(grad), bins=100, label=f'{pname} / {grad.shape[0]}')
+                #plt.legend(loc='upper left')
+                #j += 1
+                
                 s = torch.norm(grads[pname] / Fisher_inv[pname]).detach().cpu()
                 if i == 0:
                     score[pname] = []
                 score[pname].append(s.numpy())
+            #fig.savefig(f'./dummy/{datetime.strftime(datetime.now(), "%Y-%m-%d-%H-%M-%S-%f")}_ood.png')
+            #plt.show()
                 
+        #if i >= 3:
+            #assert 0==1
         if i >= max_iter - 1:
             break
     end = datetime.now()
@@ -282,6 +506,7 @@ def AUTO_VAE(
             max_iter=max_iter[1],
             loss_type=loss_type,
             method=method,
+            ood=ood,
         )
         if ood == opt.train_dist:
             TIME = avg_time

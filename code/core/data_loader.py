@@ -1,6 +1,7 @@
 import os
 import cv2
 from PIL import Image
+import random
 import numpy as np
 
 import torch
@@ -11,6 +12,10 @@ import torch.nn.functional as F
 from torchvision.datasets import ImageFolder
 
 import config
+# fix a random seed
+random.seed(2021)
+np.random.seed(2021)
+torch.manual_seed(2021)
 
 def TRAIN_loader(option='cifar10', shuffle=True, augment=False, is_glow=False, normalize=False, batch_size=1):
     

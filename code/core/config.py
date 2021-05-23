@@ -10,16 +10,16 @@ class VAE_cifar10:
                 #'cifar100',
                 'mnist',
                 'fmnist',
-                #'kmnist',
-                #'omniglot',
+                'kmnist',
+                'omniglot',
                 'notmnist',
                 #'trafficsign',
                 'noise',
                 'constant',
                ]
-    dataroot = '../../data'
+    dataroot = '../data'
     modelroot = '../saved_models'
-    workers = 2
+    workers = 0
     imageSize = 32
     nc = 3   # Num of c (channels)
     nz = 200 # Num of z (latent)
@@ -28,7 +28,7 @@ class VAE_cifar10:
     beta = 1 # Beta-VAE !
     batch_size = 1
     train_batchsize = 1
-    num_samples = 20 # as Likelihood Regret
+    num_samples = 1 # not as Likelihood Regret
     
 class VAE_fmnist:
     train_dist = 'fmnist'
@@ -37,7 +37,7 @@ class VAE_fmnist:
                 'celeba',
                 'lsun',
                 'cifar10',
-                'cifar100',
+                #'cifar100',
                 'mnist',
                 'kmnist',
                 'omniglot',
@@ -46,7 +46,7 @@ class VAE_fmnist:
                 'constant']
     dataroot = '../data'
     modelroot = '../saved_models'
-    workers = 2
+    workers = 0
     imageSize = 32
     nc = 1   # Num of c (channels)
     nz = 100 # Num of z (latent)
@@ -55,7 +55,7 @@ class VAE_fmnist:
     beta = 1 # Beta-VAE !
     batch_size = 1
     train_batchsize = 1
-    num_samples = 20 # as Likelihood Regret
+    num_samples = 1 # as Likelihood Regret
     
 class GLOW_cifar10:
     train_dist = 'cifar10'
@@ -119,7 +119,7 @@ class GLOW_fmnist:
                 'notmnist',
                 'noise',
                 'constant']
-    dataroot = '../../data'
+    dataroot = '../data'
     modelroot = '../saved_models'
     resume_train = False
     download = False

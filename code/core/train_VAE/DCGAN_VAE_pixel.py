@@ -39,11 +39,10 @@ class Encoder(nn.Module):
             output = nn.parallel.data_parallel(self.main, input, range(self.ngpu))
         else: 
             output = self.main(input)
-        #mu = Variable(self.conv1(output), requires_grad=True)
         mu = self.conv1(output)
         logvar = self.conv2(output)
         z = self.reparametrize(mu,logvar)
-        return [z,mu,logvar]
+        return [z, mu, logvar, output]
 
 class DCGAN_G(nn.Module):
     def __init__(self, isize, nz, nc, ngf, ngpu):
