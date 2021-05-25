@@ -42,7 +42,7 @@ class Encoder(nn.Module):
         mu = self.conv1(output)
         logvar = self.conv2(output)
         z = self.reparametrize(mu,logvar)
-        return [z, mu, logvar, output]
+        return [z, mu, logvar]
 
 class DCGAN_G(nn.Module):
     def __init__(self, isize, nz, nc, ngf, ngpu):

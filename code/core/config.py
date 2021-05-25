@@ -7,17 +7,15 @@ class VAE_cifar10:
                 'svhn',
                 'celeba',
                 'lsun',
-                #'cifar100',
                 'mnist',
                 'fmnist',
                 'kmnist',
                 'omniglot',
                 'notmnist',
-                #'trafficsign',
                 'noise',
                 'constant',
-               ]
-    dataroot = '../data'
+                'overall',]
+    dataroot = '../../data'
     modelroot = '../saved_models'
     workers = 0
     imageSize = 32
@@ -37,14 +35,14 @@ class VAE_fmnist:
                 'celeba',
                 'lsun',
                 'cifar10',
-                #'cifar100',
                 'mnist',
                 'kmnist',
                 'omniglot',
                 'notmnist',
                 'noise',
-                'constant']
-    dataroot = '../data'
+                'constant',
+                'overall']
+    dataroot = '../../data'
     modelroot = '../saved_models'
     workers = 0
     imageSize = 32

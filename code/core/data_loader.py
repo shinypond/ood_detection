@@ -9,7 +9,6 @@ import torch.utils.data as data
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 import torch.nn.functional as F
-from torchvision.datasets import ImageFolder
 
 import config
 # fix a random seed
@@ -175,6 +174,9 @@ def TEST_loader(train_dist='cifar10', target_dist='cifar10', batch_size=1, shuff
         elif target_dist == 'constant':
             return test_loader_constant(opt, preprocess, batch_size, shuffle, normalize)
         
+        elif target_dist == 'overall':
+            return test_loader_overall(opt, preprocess, batch_size, shuffle, normalize)
+        
         else:
             raise NotImplementedError("Oops! Such match of ID & OOD doesn't exist!")
 
@@ -212,11 +214,17 @@ def TEST_loader(train_dist='cifar10', target_dist='cifar10', batch_size=1, shuff
         elif target_dist == 'notmnist':
             return test_loader_notmnist(opt, preprocess, batch_size, shuffle, normalize)
             
+        elif target_dist == 'trafficsign':
+            return test_loader_trafficsign(opt, preprocess, batch_size, shuffle, normalize)
+        
         elif target_dist == 'noise':
             return test_loader_noise(opt, preprocess, batch_size, shuffle, normalize)
         
         elif target_dist == 'constant':
             return test_loader_constant(opt, preprocess, batch_size, shuffle, normalize)
+        
+        elif target_dist == 'overall':
+            return test_loader_overall(opt, preprocess, batch_size, shuffle, normalize)
         
         else:
             raise NotImplementedError("Oops! Such match of ID & OOD doesn't exist!")
@@ -614,5 +622,42 @@ def test_loader_constant(opt, preprocess, batch_size, shuffle, normalize=False):
         num_workers=0,
     )
     return test_loader_constant
+
+def test_loader_overall(opt, preprocess, batch_size, shuffle, normalize=False):
+    if normalize:
+        preprocess = add_normalize(preprocess, opt.nc)
+    if opt.nc == 1:
+        preprocess += [rgb_to_gray]
+    class OverAll(data.Dataset):
+        def __init__(self, db_path, transform=None):
+            super(OverAll, self).__init__()
+            self.db_path = db_path
+            elements = os.listdir(self.db_path)
+            self.total_path = [self.db_path + '/' + element for element in elements]
+            self.transform = transform
+
+        def __len__(self):
+            return len(self.total_path)
+
+        def __getitem__(self, index):
+            current_path = self.total_path[index]
+            img = cv2.imread(current_path)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(img)
+            img = self.transform(img)
+            return img
+
+    transform=transforms.Compose([
+        transforms.ToTensor(),
+    ] + preprocess)
+
+    overall = OverAll(f'{opt.dataroot}/overall_{opt.train_dist}', transform=transform)
+    test_loader_overall = data.DataLoader(
+        overall,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=0,
+    )
+    return test_loader_overall
 
 

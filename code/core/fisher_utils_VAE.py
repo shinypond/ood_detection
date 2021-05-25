@@ -15,6 +15,8 @@ from custom_loss import VAE_loss_pixel, loglikelihood
 import config
 from data_loader import TRAIN_loader, TEST_loader
 
+from ekfac import EKFACOptimizer
+
 # fix a random seed
 random.seed(2021)
 np.random.seed(2021)
@@ -34,6 +36,7 @@ def Calculate_fisher_VAE_ekfac(
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
     optimizer2 = optim.SGD(netG.parameters(), lr=0, momentum=0) # no learning
+    ekfac_optim = EKFACOptimizer(netE)
     Fisher_inv = {}
     normalize_factor = {}
     grads = {}
@@ -43,9 +46,10 @@ def Calculate_fisher_VAE_ekfac(
         
         optimizer1.zero_grad()
         optimizer2.zero_grad()
+        ekfac_optim.zero_grad()
         x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
-        [z, mu, logvar, pre_mu] = netE(x)
-        mu = Variable(mu, requires_grad=True)
+        [z, mu, logvar] = netE(x)
+        #mu = Variable(mu, requires_grad=True)
         
         if opt.num_samples == 1:
             recon = netG(mu)
@@ -64,27 +68,36 @@ def Calculate_fisher_VAE_ekfac(
             raise ValueError
             
         loss.backward(retain_graph=True)
+        ekfac_optim.step()
         
+        """ 예전 버전
         if i == 0:
             A = torch.mm(pre_mu.view(-1, 1), pre_mu.view(1, -1))
             B = torch.mm(mu.grad.view(-1, 1), mu.grad.view(1, -1))
         else:
             A = (i * A + torch.mm(pre_mu.view(-1, 1), pre_mu.view(1, -1))) / (i + 1)
             B = (i * B + torch.mm(mu.grad.view(-1, 1), mu.grad.view(1, -1))) / (i + 1)
+        """
         
         if i >= max_iter - 1:
             break
-            
-    _, U_A = torch.symeig(A, eigenvectors=True)
-    _, U_B = torch.symeig(B, eigenvectors=True)
+        
+    A = ekfac_optim.m_aa
+    B = ekfac_optim.m_gg
+    U_A, U_B = {}, {}
+    S = {}
+    for name, module in netE.named_modules():
+        if module in A.keys():
+            _, U_A[name] = torch.symeig(A[module], eigenvectors=True)
+            _, U_B[name] = torch.symeig(B[module], eigenvectors=True)
+            S[name] = 0
     
-    S = 0
     
     for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher VAE by EKFAC', unit='step')):
         optimizer1.zero_grad()
         optimizer2.zero_grad()
         x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
-        [z, mu, logvar, pre_mu] = netE(x)
+        [z, mu, logvar] = netE(x)
         
         if opt.num_samples == 1:
             recon = netG(mu)
@@ -104,17 +117,27 @@ def Calculate_fisher_VAE_ekfac(
             
         loss.backward(retain_graph=True)
         
+        for name, module in netE.named_modules():
+            if module in A.keys():
+                GRAD = module.weight.grad.view(module.weight.shape[0], -1) # without bias
+                if module.bias is not None:
+                    GRAD = torch.cat([GRAD, module.bias.grad.view(module.bias.shape[0], -1)], 1)
+                s = torch.mm(torch.mm(U_B[name].T, GRAD), U_A[name]).view(-1)
+                s = s ** 2
+                S[name] = (i * S[name] + s.clone().detach()) / (i + 1)
+        
+        """ 예전 버전
         assert list(params.keys()) == ['Econv1_w']
         param = params['Econv1_w']
         
         s = torch.mm(torch.mm(U_B.T, param.grad.view(param.shape[0], -1)), U_A).view(-1)
         s = s ** 2
         S = (i * S + s.clone().detach()) / (i + 1)
+        """
         
         if i >= max_iter - 1:
             break
         
-            
     return U_A, U_B, S
 
 def Calculate_score_VAE_ekfac(
@@ -135,7 +158,7 @@ def Calculate_score_VAE_ekfac(
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
     optimizer2 = optim.SGD(netG.parameters(), lr=0, momentum=0) # no learning
-    score = []
+    score = {}
     if ood == opt.train_dist: # i.e, In-dist(test)
         start = datetime.now()
         
@@ -149,8 +172,7 @@ def Calculate_score_VAE_ekfac(
         optimizer1.zero_grad()
         optimizer2.zero_grad()
         x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
-        gradient_val = 0
-        [z, mu, logvar, pre_mu] = netE(x)
+        [z, mu, logvar] = netE(x)
         
         if opt.num_samples == 1:
             recon = netG(mu)
@@ -170,6 +192,22 @@ def Calculate_score_VAE_ekfac(
             
         loss.backward(retain_graph=True)
         
+        for name, module in netE.named_modules():
+            if name in U_A.keys():
+                GRAD = module.weight.grad.view(module.weight.shape[0], -1) # without bias
+                if module.bias is not None:
+                    GRAD = torch.cat([GRAD, module.bias.grad.view(module.bias.shape[0], -1)], 1)
+                temp = torch.mm(torch.mm(U_B[name].T, GRAD), U_A[name]).view(-1, 1)
+                s = temp / (S[name].view(-1, 1) + 1e-8)
+                s = torch.mm(temp.T, s).detach().cpu().numpy().reshape(-1)
+                
+                if name in score.keys():
+                    score[name].append(s)
+                else:
+                    score[name] = []
+                    score[name].append(s)
+        
+        """
         assert list(params.keys()) == ['Econv1_w']
         param = params['Econv1_w']
         
@@ -177,9 +215,13 @@ def Calculate_score_VAE_ekfac(
         s = temp / (S.view(-1, 1) + 1e-8)
         s = torch.mm(temp.T, s).detach().cpu().numpy().reshape(-1)
         score.append(s)
+        """
         
         if i >= max_iter - 1:
             break
+            
+    for name in score.keys():
+        score[name] = np.array(score[name])
     
     if ood == opt.train_dist:
         end = datetime.now()
@@ -187,7 +229,7 @@ def Calculate_score_VAE_ekfac(
         print(f'Average Inference Time : {avg_time} seconds')
         print(f'Average #Images Processed : {1 / avg_time} Images')
     
-    return np.array(score)
+    return score
         
         
             
