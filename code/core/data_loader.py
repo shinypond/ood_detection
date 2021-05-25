@@ -256,16 +256,19 @@ def add_normalize(preprocess, nc):
 def test_loader_cifar10(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    gray = []
     if opt.nc == 1:
-        preprocess += [rgb_to_gray]
+        gray += [rgb_to_gray]
     dataset_cifar10 = dset.CIFAR10(
         root=opt.dataroot,
         train=False,
         download=True,
-        transform=transforms.Compose([
-            transforms.Resize((opt.imageSize)),
-            transforms.ToTensor(),
-        ] + preprocess),
+        transform=transforms.Compose(
+            gray + [
+                transforms.Resize((opt.imageSize)),
+                transforms.ToTensor(),
+            ] + preprocess
+        ),
     )
     test_loader_cifar10 = data.DataLoader(
         dataset_cifar10,
@@ -278,16 +281,19 @@ def test_loader_cifar10(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_svhn(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    gray = []
     if opt.nc == 1:
-        preprocess += [rgb_to_gray]
+        gray += [rgb_to_gray]
     dataset_svhn = dset.SVHN(
         root=opt.dataroot,
         split='test',
         download=True,
-        transform=transforms.Compose([
-            transforms.Resize((opt.imageSize, opt.imageSize)),
-            transforms.ToTensor(),
-        ] + preprocess),
+        transform=transforms.Compose(
+            gray + [
+                transforms.Resize((opt.imageSize, opt.imageSize)),
+                transforms.ToTensor(),
+            ] + preprocess
+        ),
     )
     test_loader_svhn = data.DataLoader(
         dataset_svhn,
@@ -300,8 +306,9 @@ def test_loader_svhn(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_celeba(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    gray = []
     if opt.nc == 1:
-        preprocess += [rgb_to_gray]
+        gray += [rgb_to_gray]
     class CelebA(data.Dataset):
         def __init__(self, db_path, transform=None):
             super(CelebA, self).__init__()
@@ -321,10 +328,11 @@ def test_loader_celeba(opt, preprocess, batch_size, shuffle, normalize=False):
             img = self.transform(img)
             return img
 
-    transform=transforms.Compose([
-        transforms.Resize((opt.imageSize, opt.imageSize)),
-        transforms.ToTensor(),
-    ] + preprocess)
+    transform=transforms.Compose(
+        gray + [
+            transforms.Resize((opt.imageSize, opt.imageSize)),
+            transforms.ToTensor(),
+        ] + preprocess)
 
     celeba = CelebA(f'{opt.dataroot}/celeba/archive', transform=transform)
     test_loader_celeba = data.DataLoader(
@@ -338,8 +346,9 @@ def test_loader_celeba(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_lsun(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    gray = []
     if opt.nc == 1:
-        preprocess += [rgb_to_gray]
+        gray += [rgb_to_gray]
     class LSUN(data.Dataset):
         def __init__(self, db_path, categories=['bedroom', 'bridge', 'church_outdoor', 'classroom', 'conference_room', 'dining_room', 'kitchen', 'living_room', 'restaurant', 'tower'], transform=None):
             super(LSUN, self).__init__()
@@ -361,12 +370,13 @@ def test_loader_lsun(opt, preprocess, batch_size, shuffle, normalize=False):
             img = self.transform(img)
             return img
 
-    transform = transforms.Compose([
-        #transforms.Resize((opt.imageSize, opt.imageSize)),
-        transforms.Resize(opt.imageSize), # Then the size will be H x 32 or 32 x W (32 is smaller)
-        transforms.CenterCrop(opt.imageSize),
-        transforms.ToTensor(),
-    ] + preprocess)
+    transform = transforms.Compose(
+        gray + [
+            #transforms.Resize((opt.imageSize, opt.imageSize)),
+            transforms.Resize(opt.imageSize), # Then the size will be H x 32 or 32 x W (32 is smaller)
+            transforms.CenterCrop(opt.imageSize),
+            transforms.ToTensor(),
+        ] + preprocess)
 
     lsun = LSUN(f'{opt.dataroot}/LSUN_train_10000', transform=transform)
     test_loader_lsun = data.DataLoader(
@@ -380,16 +390,19 @@ def test_loader_lsun(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_cifar100(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    gray = []
     if opt.nc == 1:
-        preprocess += [rgb_to_gray]
+        gray += [rgb_to_gray]
     dataset_cifar100 = dset.CIFAR100(
         root=opt.dataroot,
         train=False,
         download=True,
-        transform=transforms.Compose([
-            transforms.Resize((opt.imageSize)),
-            transforms.ToTensor(),
-        ] + preprocess),
+        transform=transforms.Compose(
+            gray + [
+                transforms.Resize((opt.imageSize)),
+                transforms.ToTensor(),
+            ] + preprocess
+        ),
     )
     test_loader_cifar100 = data.DataLoader(
         dataset_cifar100,
@@ -402,16 +415,19 @@ def test_loader_cifar100(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_mnist(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    rgb = []
     if opt.nc == 3:
-        preprocess += [gray_to_rgb]
+        rgb += [gray_to_rgb]
     dataset_mnist = dset.MNIST(
         root=opt.dataroot,
         train=False,
         download=True,
-        transform=transforms.Compose([
-            transforms.Resize((opt.imageSize, opt.imageSize)),
-            transforms.ToTensor(),
-        ] + preprocess),
+        transform=transforms.Compose(
+            rgb + [
+                transforms.Resize((opt.imageSize, opt.imageSize)),
+                transforms.ToTensor(),
+            ] + preprocess
+        ),
     )
     test_loader_mnist = data.DataLoader(
         dataset_mnist,
@@ -424,16 +440,19 @@ def test_loader_mnist(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_fmnist(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    rgb = []
     if opt.nc == 3:
-        preprocess += [gray_to_rgb]
+        rgb += [gray_to_rgb]
     dataset_fmnist = dset.FashionMNIST(
         root=opt.dataroot,
         train=False,
         download=True,
-        transform=transforms.Compose([
-            transforms.Resize((opt.imageSize)),
-            transforms.ToTensor(),
-        ] + preprocess),
+        transform=transforms.Compose(
+            rgb + [
+                transforms.Resize((opt.imageSize)),
+                transforms.ToTensor(),
+            ] + preprocess
+        ),
     )
     test_loader_fmnist = data.DataLoader(
         dataset_fmnist,
@@ -446,16 +465,19 @@ def test_loader_fmnist(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_kmnist(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    rgb = []
     if opt.nc == 3:
-        preprocess += [gray_to_rgb]
+        rgb += [gray_to_rgb]
     dataset_kmnist = dset.KMNIST(
         root=opt.dataroot,
         train=False,
         download=True,
-        transform=transforms.Compose([
-            transforms.Resize((opt.imageSize, opt.imageSize)),
-            transforms.ToTensor(),
-        ] + preprocess),
+        transform=transforms.Compose(
+            rgb + [
+                transforms.Resize((opt.imageSize, opt.imageSize)),
+                transforms.ToTensor(),
+            ] + preprocess
+        ),
     )
     test_loader_kmnist = data.DataLoader(
         dataset_kmnist,
@@ -468,16 +490,19 @@ def test_loader_kmnist(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_omniglot(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    rgb = []
     if opt.nc == 3:
-        preprocess += [gray_to_rgb]
+        rgb += [gray_to_rgb]
     dataset_omniglot = dset.Omniglot(
         root=opt.dataroot, 
         background=False,
         download=True,
-        transform=transforms.Compose([
-            transforms.Resize((opt.imageSize, opt.imageSize)),
-            transforms.ToTensor(),
-        ] + preprocess),
+        transform=transforms.Compose(
+            rgb + [
+                transforms.Resize((opt.imageSize, opt.imageSize)),
+                transforms.ToTensor(),
+            ] + preprocess
+        ),
     )
     test_loader_omniglot = data.DataLoader(
         dataset_omniglot,
@@ -490,8 +515,9 @@ def test_loader_omniglot(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_notmnist(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    gray = []
     if opt.nc == 1:
-        preprocess += [rgb_to_gray]
+        gray += [rgb_to_gray]
     class notMNIST(data.Dataset):
         def __init__(self, db_path, transform=None):
             super(notMNIST, self).__init__()
@@ -514,10 +540,12 @@ def test_loader_notmnist(opt, preprocess, batch_size, shuffle, normalize=False):
             img = self.transform(img)
             return img
 
-    transform=transforms.Compose([
-        transforms.Resize((opt.imageSize, opt.imageSize)),
-        transforms.ToTensor(),
-    ] + preprocess)
+    transform=transforms.Compose(
+        gray + [
+            transforms.Resize((opt.imageSize, opt.imageSize)),
+            transforms.ToTensor(),
+        ] + preprocess
+    )
 
     notmnist = notMNIST(f'{opt.dataroot}/notMNIST_small/', transform=transform)
     test_loader_notmnist = data.DataLoader(
@@ -531,8 +559,9 @@ def test_loader_notmnist(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_trafficsign(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    gray = []
     if opt.nc == 1:
-        preprocess += [rgb_to_gray]
+        gray += [rgb_to_gray]
     class trafficsign(data.Dataset):
         def __init__(self, db_path, transform=None):
             super(trafficsign, self).__init__()
@@ -552,10 +581,12 @@ def test_loader_trafficsign(opt, preprocess, batch_size, shuffle, normalize=Fals
             img = self.transform(img)
             return img
 
-    transform = transforms.Compose([
-        transforms.Resize((opt.imageSize, opt.imageSize)),
-        transforms.ToTensor(),
-    ] + preprocess)
+    transform = transforms.Compose(
+        gray + [
+            transforms.Resize((opt.imageSize, opt.imageSize)),
+            transforms.ToTensor(),
+        ] + preprocess
+    )
 
     ts = trafficsign(f'{opt.dataroot}/GTSRB_Final_Test_Images/Final_Test/Images', transform=transform)
     test_loader_trafficsign = data.DataLoader(
@@ -626,8 +657,6 @@ def test_loader_constant(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_overall(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
-    if opt.nc == 1:
-        preprocess += [rgb_to_gray]
     class OverAll(data.Dataset):
         def __init__(self, db_path, transform=None):
             super(OverAll, self).__init__()
@@ -659,5 +688,6 @@ def test_loader_overall(opt, preprocess, batch_size, shuffle, normalize=False):
         num_workers=0,
     )
     return test_loader_overall
+
 
 
