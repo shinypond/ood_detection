@@ -111,19 +111,19 @@ if __name__=="__main__":
         
         torch.manual_seed(2021)
         random.seed(2021)
-            dataloader = TEST_loader(
-                train_dist=opt.train_dist,
-                target_dist=ood,
-                shuffle=True,
-                is_glow=False,
-            )
+        dataloader = TEST_loader(
+            train_dist=opt.train_dist,
+            target_dist=ood,
+            shuffle=True,
+            is_glow=False,
+        )
 
         NLL_regret = []
         NLL = []
         if ood == opt.train_dist:
             start = datetime.now()
         
-        for i, x in enumerate(dataloader):
+        for i, xi in enumerate(dataloader):
             try:
                 xi, _ = xi
             except:

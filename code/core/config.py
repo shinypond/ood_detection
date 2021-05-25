@@ -15,7 +15,7 @@ class VAE_cifar10:
                 'noise',
                 'constant',
                 'overall',]
-    dataroot = '../data'
+    dataroot = '../../data'
     modelroot = '../saved_models'
     workers = 0
     imageSize = 32
@@ -42,7 +42,7 @@ class VAE_fmnist:
                 'noise',
                 'constant',
                 'overall']
-    dataroot = '../data'
+    dataroot = '../../data'
     modelroot = '../saved_models'
     workers = 0
     imageSize = 32
