@@ -25,13 +25,15 @@ torch.manual_seed(2021)
 def Calculate_fisher_VAE_ekfac(
     netE,
     netG,
-    dataloader,
     params,
     opt,
     max_iter,
     loss_type='ELBO_pixel',):
     
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    torch.manual_seed(2021)
+    random.seed(2021)
+    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=False, batch_size=1)
     netE.eval()
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
@@ -92,6 +94,9 @@ def Calculate_fisher_VAE_ekfac(
             _, U_B[name] = torch.symeig(B[module], eigenvectors=True)
             S[name] = 0
     
+    torch.manual_seed(2021)
+    random.seed(2021)
+    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=False, batch_size=1)
     
     for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher VAE by EKFAC', unit='step')):
         optimizer1.zero_grad()
@@ -139,6 +144,9 @@ def Calculate_fisher_VAE_ekfac(
             break
     
     train_score = {}
+    torch.manual_seed(2021)
+    random.seed(2021)
+    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=False, batch_size=1)
     
     for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher VAE by EKFAC', unit='step')):
         optimizer1.zero_grad()
@@ -178,6 +186,9 @@ def Calculate_fisher_VAE_ekfac(
                 else:
                     train_score[name] = []
                     train_score[name].append(s)
+                    
+        if i >= max_iter - 1:
+            break
     
     # Obtain MEAN, STDDEV of ROSE in train-dist at each module in the encoder (netE).
     mean, std = {}, {}
@@ -190,7 +201,6 @@ def Calculate_fisher_VAE_ekfac(
 def Calculate_score_VAE_ekfac(
     netE,
     netG,
-    dataloader,
     params,
     opt,
     U_A,
@@ -201,6 +211,9 @@ def Calculate_score_VAE_ekfac(
     loss_type='ELBO_pixel',):
     
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    torch.manual_seed(2021)
+    random.seed(2021)
+    dataloader = TEST_loader(opt.train_dist, ood, is_glow=False)
     netE.eval()
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning

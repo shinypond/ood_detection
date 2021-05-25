@@ -51,6 +51,8 @@ if __name__ == '__main__':
     
     for ood in opt.ood_list:
     
+        torch.manual_seed(2021)
+        random.seed(2021)
         test_loader = TEST_loader(opt.train_dist, ood, shuffle=True, is_glow=True, normalize=False)
         NLL = []
         

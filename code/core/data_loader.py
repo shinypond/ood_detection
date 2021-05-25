@@ -16,7 +16,7 @@ random.seed(2021)
 np.random.seed(2021)
 torch.manual_seed(2021)
 
-def TRAIN_loader(option='cifar10', shuffle=True, augment=False, is_glow=False, normalize=False, batch_size=1):
+def TRAIN_loader(option='cifar10', shuffle=True, augment=True, is_glow=False, normalize=False, batch_size=1):
     
     """ Return train_loader for given dataset """
     """ Option : 'cifar10' or 'fmnist' """
@@ -87,7 +87,7 @@ def TRAIN_loader(option='cifar10', shuffle=True, augment=False, is_glow=False, n
         raise NotImplementationError('TRAIN distribution must be CIFAR-10 or FMNIST !')
     
     
-def TEST_loader(train_dist='cifar10', target_dist='cifar10', batch_size=1, shuffle=False, is_glow=False, normalize=False):
+def TEST_loader(train_dist='cifar10', target_dist='cifar10', batch_size=1, shuffle=True, is_glow=False, normalize=False):
     
     """ Return test_loader for given 'train_dist' and 'target_dist' """
     

@@ -104,8 +104,8 @@ if __name__=="__main__":
     start = datetime.now()
     
     for ood in opt.ood_list:
-        if ood in ['trafficsign', 'noise', 'constant']:
-            continue
+        torch.manual_seed(2021)
+        random.seed(2021)
         test_loader = TEST_loader(opt.train_dist, ood, shuffle=True, is_glow=False, normalize=False)
         NLL = []
         for i, xi in enumerate(test_loader):

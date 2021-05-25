@@ -120,6 +120,8 @@ if __name__=="__main__":
     
     for ood in opt.ood_list:
 
+        torch.manual_seed(2021)
+        random.seed(2021)
         dataloader = TEST_loader(
             train_dist=opt.train_dist,
             target_dist=ood,
