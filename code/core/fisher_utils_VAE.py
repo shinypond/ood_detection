@@ -193,8 +193,9 @@ def Calculate_fisher_VAE_ekfac(
     # Obtain MEAN, STDDEV of ROSE in train-dist at each module in the encoder (netE).
     mean, std = {}, {}
     for name, module in netE.named_modules():
-        mean[name] = np.array(train_score[name]).mean()
-        std[name] = np.array(train_score[name]).std()
+        if module in A.keys():
+            mean[name] = np.array(train_score[name]).mean()
+            std[name] = np.array(train_score[name]).std()
                     
     return U_A, U_B, S, mean, std
 

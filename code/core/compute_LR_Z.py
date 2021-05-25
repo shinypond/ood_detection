@@ -149,7 +149,7 @@ if __name__=="__main__":
             [z, mu, logvar] = netE(xi)
             mu = nn.Parameter(mu)
             logvar = nn.Parameter(logvar)
-            optimizer = optim.Adam([mu, logvar], lr=1e-4, betas=(opt.beta1, 0.999),weight_decay=5e-5)
+            optimizer = optim.Adam([mu, logvar], lr=1e-4, betas=(opt.beta1, 0.999),weight_decay=0.)
             target = Variable(xi.data.view(-1) * 255).long()
 
             for it in range(opt.num_iter):
