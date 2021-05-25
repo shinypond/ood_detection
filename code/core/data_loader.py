@@ -285,7 +285,7 @@ def test_loader_svhn(opt, preprocess, batch_size, shuffle, normalize=False):
         split='test',
         download=True,
         transform=transforms.Compose([
-            transforms.Resize((opt.imageSize,opt.imageSize)),
+            transforms.Resize((opt.imageSize, opt.imageSize)),
             transforms.ToTensor(),
         ] + preprocess),
     )
