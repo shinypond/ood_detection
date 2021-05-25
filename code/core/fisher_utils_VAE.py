@@ -137,8 +137,55 @@ def Calculate_fisher_VAE_ekfac(
         
         if i >= max_iter - 1:
             break
+    
+    train_score = {}
+    
+    for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher VAE by EKFAC', unit='step')):
+        optimizer1.zero_grad()
+        optimizer2.zero_grad()
+        x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
+        [z, mu, logvar] = netE(x)
         
-    return U_A, U_B, S
+        if opt.num_samples == 1:
+            recon = netG(mu)
+        elif opt.num_samples > 1:
+            recon = netG(z)
+        else:
+            raise ValueError
+        
+        recon = recon.contiguous()
+        
+        if loss_type == 'ELBO_pixel':
+            loss = VAE_loss_pixel(x, [recon, mu, logvar])
+        elif loss_type == 'exact':
+            loss = loglikelihood(x, z, [recon, mu, logvar])
+        else:
+            raise ValueError
+            
+        loss.backward(retain_graph=True)
+        
+        for name, module in netE.named_modules():
+            if module in A.keys():
+                GRAD = module.weight.grad.view(module.weight.shape[0], -1) # without bias
+                if module.bias is not None:
+                    GRAD = torch.cat([GRAD, module.bias.grad.view(module.bias.shape[0], -1)], 1)
+                temp = torch.mm(torch.mm(U_B[name].T, GRAD), U_A[name]).view(-1, 1)
+                s = temp / (S[name].view(-1, 1) + 1e-8)
+                s = torch.mm(temp.T, s).detach().cpu().numpy().reshape(-1)
+                
+                if name in train_score.keys():
+                    train_score[name].append(s)
+                else:
+                    train_score[name] = []
+                    train_score[name].append(s)
+    
+    # Obtain MEAN, STDDEV of ROSE in train-dist at each module in the encoder (netE).
+    mean, std = {}, {}
+    for name, module in netE.named_modules():
+        mean[name] = np.array(train_score[name]).mean()
+        std[name] = np.array(train_score[name]).std()
+                    
+    return U_A, U_B, S, mean, std
 
 def Calculate_score_VAE_ekfac(
     netE,
