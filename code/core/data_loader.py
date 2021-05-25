@@ -423,10 +423,10 @@ def test_loader_mnist(opt, preprocess, batch_size, shuffle, normalize=False):
         train=False,
         download=True,
         transform=transforms.Compose(
-            rgb + [
+            [
                 transforms.Resize((opt.imageSize, opt.imageSize)),
                 transforms.ToTensor(),
-            ] + preprocess
+            ] + rgb + preprocess
         ),
     )
     test_loader_mnist = data.DataLoader(
@@ -448,10 +448,10 @@ def test_loader_fmnist(opt, preprocess, batch_size, shuffle, normalize=False):
         train=False,
         download=True,
         transform=transforms.Compose(
-            rgb + [
+            [
                 transforms.Resize((opt.imageSize)),
                 transforms.ToTensor(),
-            ] + preprocess
+            ] + rgb + preprocess
         ),
     )
     test_loader_fmnist = data.DataLoader(
@@ -473,10 +473,10 @@ def test_loader_kmnist(opt, preprocess, batch_size, shuffle, normalize=False):
         train=False,
         download=True,
         transform=transforms.Compose(
-            rgb + [
+            [
                 transforms.Resize((opt.imageSize, opt.imageSize)),
                 transforms.ToTensor(),
-            ] + preprocess
+            ] + rgb + preprocess
         ),
     )
     test_loader_kmnist = data.DataLoader(
@@ -498,10 +498,10 @@ def test_loader_omniglot(opt, preprocess, batch_size, shuffle, normalize=False):
         background=False,
         download=True,
         transform=transforms.Compose(
-            rgb + [
+            [
                 transforms.Resize((opt.imageSize, opt.imageSize)),
                 transforms.ToTensor(),
-            ] + preprocess
+            ] + rgb + preprocess
         ),
     )
     test_loader_omniglot = data.DataLoader(
@@ -657,6 +657,9 @@ def test_loader_constant(opt, preprocess, batch_size, shuffle, normalize=False):
 def test_loader_overall(opt, preprocess, batch_size, shuffle, normalize=False):
     if normalize:
         preprocess = add_normalize(preprocess, opt.nc)
+    gray = []
+    if opt.nc == 1:
+        gray += [rgb_to_gray]
     class OverAll(data.Dataset):
         def __init__(self, db_path, transform=None):
             super(OverAll, self).__init__()
@@ -676,9 +679,11 @@ def test_loader_overall(opt, preprocess, batch_size, shuffle, normalize=False):
             img = self.transform(img)
             return img
 
-    transform=transforms.Compose([
-        transforms.ToTensor(),
-    ] + preprocess)
+    transform=transforms.Compose(
+        gray + [
+            transforms.ToTensor(),
+        ] + preprocess
+    )
 
     overall = OverAll(f'{opt.dataroot}/overall_{opt.train_dist}', transform=transform)
     test_loader_overall = data.DataLoader(

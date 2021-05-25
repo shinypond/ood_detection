@@ -79,7 +79,8 @@ if __name__=="__main__":
         opt.repeat = 20
         opt.state_E = f'../../saved_models/VAE_fmnist/netE_pixel_ngf_32_nz_100_beta_1.0_augment_hflip_epoch_100.pth'
         opt.state_G = f'../../saved_models/VAE_fmnist/netG_pixel_ngf_32_nz_100_beta_1.0_augment_hflip_epoch_100.pth'
-        assert 0==1, 'Not Yet Prepared the pre-trained VAE model (Background)'
+        opt.state_E_bg = f'../../saved_models/VAE_fmnist/LRatio_BG/netE_bg_ngf_32_nz_100_beta_1.0_augment_hflip_decay_0_epoch_100.pth'
+        opt.state_G_bg = f'../../saved_models/VAE_fmnist/LRatio_BG/netG_bg_ngf_32_nz_100_beta_1.0_augment_hflip_decay_0_epoch_100.pth'
     else:
         raise ValueError('Insert 1 or 2. Bye.')
         

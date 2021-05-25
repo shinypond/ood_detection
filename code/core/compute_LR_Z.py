@@ -193,7 +193,7 @@ if __name__=="__main__":
             end = datetime.now()
             avg_time = (end - start).total_seconds() / test_num
 
-        np.save(f'../npy/ic({opt.ic_type})/{opt.train_dist}_{ood}.npy', difference)
+        np.save(f'../npy/LR(Z)/{opt.train_dist}_{ood}.npy', NLL_regret)
         print(f'saved {opt.train_dist}_{ood} LR(Z) npy !')
         
     print(f'average {opt.train_dist} inference time : {avg_time} seconds')
