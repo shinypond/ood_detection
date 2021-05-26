@@ -68,8 +68,11 @@ if __name__=="__main__":
     if ans == '1':
         opt = config.VAE_cifar10
         opt.repeat = 20
-        opt.state_E = f'../../saved_models/VAE_cifar10/netE_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth'
-        opt.state_G = f'../../saved_models/VAE_cifar10/netG_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth'
+        #opt.state_E = f'../../saved_models/VAE_cifar10/netE_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth'
+        #opt.state_G = f'../../saved_models/VAE_cifar10/netG_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth'
+        opt.state_E = f'../../saved_models/VAE_cifar10/netE_pixel_ngf_64_nz_100_beta_1.0_augment_hflip_epoch_100.pth'
+        opt.state_G = f'../../saved_models/VAE_cifar10/netG_pixel_ngf_64_nz_100_beta_1.0_augment_hflip_epoch_100.pth'
+        opt.nz = 100
     elif ans == '2':
         opt = config.VAE_fmnist
         opt.repeat = 20
@@ -193,8 +196,10 @@ if __name__=="__main__":
             end = datetime.now()
             avg_time = (end - start).total_seconds() / test_num
 
-        np.save(f'../npy/LR(Z)/{opt.train_dist}_{ood}.npy', NLL_regret)
-        print(f'saved {opt.train_dist}_{ood} LR(Z) npy !')
+        #np.save(f'../npy/LR(Z)/{opt.train_dist}_{ood}.npy', NLL_regret)
+        #print(f'saved {opt.train_dist}_{ood} LR(Z) npy !')
+        np.save(f'../npy/LR(Z)/100_{opt.train_dist}_{ood}.npy', NLL_regret)
+        print(f'saved 100_{opt.train_dist}_{ood} LR(Z) npy !')
         
     print(f'average {opt.train_dist} inference time : {avg_time} seconds')
     print(f'average #images processed : {1 / avg_time} images')
