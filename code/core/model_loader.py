@@ -4,9 +4,9 @@ from train_CNN.resnet import ResNet18
 from train_CNN.vgg import VGG
 import config
 import os, sys
-from train_GLOW.model import Glow
+from train_GLOW.model_GLOW import Glow
 
-def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment='hflip+crop', epoch=200):
+def load_pretrained_VAE(option='cifar10', num=1, ngf=None, nz=None, beta=None, augment='hflip+crop', epoch=200):
     
     """ Load the pre-trained VAE model (for CIFAR10, FMNIST) """
     """ option : 'cifar10' or 'fmnist' is available !! """
@@ -25,13 +25,9 @@ def load_pretrained_VAE(option='cifar10', ngf=None, nz=None, beta=None, augment=
     if beta:
         opt.beta = beta
     
-    # 21.05.12 Fixed the final models !
-    path_E = f'{opt.modelroot}/VAE_{option}/netE_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
-    path_G = f'{opt.modelroot}/VAE_{option}/netG_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
+    path_E = f'{opt.modelroot}/VAE_{option}/{num}/netE_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
+    path_G = f'{opt.modelroot}/VAE_{option}/{num}/netG_pixel_ngf_{opt.ngf}_nz_{opt.nz}_beta_{opt.beta:.1f}_augment_{augment}_epoch_{epoch}.pth'
     
-    # temp
-    #path_E = f'{opt.modelroot}/netE_pixel_cifar10_None_nz200_ngf64_lambda0.pth'
-    #path_G = f'{opt.modelroot}/netG_pixel_cifar10_None_nz200_ngf64_lambda0.pth'
     
     
         
@@ -57,10 +53,19 @@ def load_pretrained_GLOW(option='cifar10'):
         opt = config.GLOW_cifar10
         image_shape = (32, 32, 3)
         num_classes = 10
+        split = True
+        decay = '5e-05'
+        epoch = 50
+        end = '.pt'
+        
     elif option == 'fmnist':
         opt = config.GLOW_fmnist
         image_shape = (32, 32, 1)
         num_classes = 10
+        split = False
+        decay = '0'
+        epoch = 50
+        end = '.pth'
     
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
@@ -76,11 +81,20 @@ def load_pretrained_GLOW(option='cifar10'):
         num_classes,
         opt.learn_top,
         opt.y_condition,
+        split,
     )
     
+    # Final
+    model_path = f'{opt.modelroot}/GLOW_{opt.train_dist}/glow_{opt.train_dist}_decay_{decay}_epoch_{epoch}{end}'
+    if option == 'cifar10':
+        model.load_state_dict(torch.load(model_path)['model']) # there are two keys: 'model', 'optimizer'
+    elif option == 'fmnist':
+        model.load_state_dict(torch.load(model_path))
+        
+    
     # trained by BJW (same to "Do generative models know what they don't know")
-    model_path = f'{opt.modelroot}/GLOW_{opt.train_dist}/glow_{opt.train_dist}.pt'
-    model.load_state_dict(torch.load(model_path)['model']) # there are two keys: 'model', 'optimizer'
+    #model_path = f'{opt.modelroot}/GLOW_{opt.train_dist}/glow_{opt.train_dist}.pt'
+    #model.load_state_dict(torch.load(model_path)['model']) # there are two keys: 'model', 'optimizer'
     
     # original GLOW model (same to "GLOW" by Kingma)
     # Note : Only available for CIFAR10 (not FMNIST!!)

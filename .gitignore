@@ -3,8 +3,7 @@ data/*
 **/data/*
 !data/README.txt
 !**/data/README.txt
-saved_models/GLOW_cifar10/glow_affine_coupling.pt
-saved_models/archived_models/GLOW_cifar10/glow_affine_coupling.pt
+**/glow_affine_coupling.pt
 **/.ipynb_checkpoints
 **/__pycache__
 **/*.py~

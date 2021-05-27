@@ -14,8 +14,9 @@ class VAE_cifar10:
                 'notmnist',
                 'noise',
                 'constant',
-                'overall',]
-    dataroot = '../../data'
+                'overall',
+               ]
+    dataroot = '../data'
     modelroot = '../saved_models'
     workers = 0
     imageSize = 32
@@ -41,8 +42,9 @@ class VAE_fmnist:
                 'notmnist',
                 'noise',
                 'constant',
-                'overall']
-    dataroot = '../../data'
+                'overall'
+               ]
+    dataroot = '../data'
     modelroot = '../saved_models'
     workers = 0
     imageSize = 32
@@ -61,15 +63,14 @@ class GLOW_cifar10:
                 'svhn',
                 'celeba',
                 'lsun',
-                'cifar100',
                 'mnist',
                 'fmnist',
                 'kmnist',
                 'omniglot',
                 'notmnist',
-                'trafficsign',
                 'noise',
                 'constant',
+                'overall',
                ]
     dataroot = '../data'
     modelroot = '../saved_models'
@@ -110,13 +111,14 @@ class GLOW_fmnist:
                 'celeba',
                 'lsun',
                 'cifar10',
-                'cifar100',
                 'mnist',
                 'kmnist',
                 'omniglot',
                 'notmnist',
                 'noise',
-                'constant']
+                'constant',
+                'overall',
+               ]
     dataroot = '../data'
     modelroot = '../saved_models'
     resume_train = False

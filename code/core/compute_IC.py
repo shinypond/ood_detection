@@ -1,4 +1,6 @@
-import os, sys, argparse, random, copy, cv2
+import os, sys, argparse, random, copy
+os.environ['OPENCV_IO_ENABLE_JASPER'] = 'true'
+import cv2
 import numpy as np
 from datetime import datetime
 from datetime import timedelta
@@ -118,7 +120,8 @@ if __name__=="__main__":
 
     ######################################################################
     
-    for ood in opt.ood_list:
+    #for ood in opt.ood_list:
+    for ood in ['cifar10']:
 
         torch.manual_seed(2021)
         random.seed(2021)
@@ -177,13 +180,13 @@ if __name__=="__main__":
             end = datetime.now()
             avg_time = (end - start).total_seconds() / test_num
 
-        np.save(f'../npy/ic({opt.ic_type})/{opt.train_dist}_{ood}.npy', difference)
-        print(f'saved {opt.train_dist}_{ood} IC(png) npy !')
+        np.save(f'../npy/IC({opt.ic_type})/{opt.train_dist}_{ood}.npy', difference)
+        print(f'saved {opt.train_dist}_{ood} IC({opt.ic_type}) npy !')
         
     print(f'average {opt.train_dist} inference time : {avg_time} seconds')
     print(f'average #images processed : {1 / avg_time} images')
 
-    model = 'IC(png)'
+    model = f'IC({opt.ic_type})'
     print(f'{model} / {opt.train_dist}')
     indist = np.load(f'../npy/{model}/{opt.train_dist}_{opt.train_dist}.npy')
     label1 = np.ones(len(indist))

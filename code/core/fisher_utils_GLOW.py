@@ -2,6 +2,8 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from datetime import datetime
+from datetime import timedelta
 # If you use jupyter lab, then install @jupyter-widgets/jupyterlab-manager and restart server
 
 import torch
@@ -11,11 +13,201 @@ from torch.autograd import Variable
 
 import config
 from data_loader import TRAIN_loader, TEST_loader
-# fix a random seed
-random.seed(2021)
-np.random.seed(2021)
-torch.manual_seed(2021)
 
+from ekfac_GLOW import EKFACOptimizer
+
+# fix a random seed
+seed = 2021
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+
+def Calculate_fisher_GLOW_ekfac(
+    model,
+    opt,
+    max_iter,
+    select_modules=[],
+    seed=2021,):
+    
+    is_glow = True
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    torch.manual_seed(seed)
+    random.seed(seed)
+    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=is_glow, batch_size=1)
+    model.eval()
+    optimizer = optim.SGD(model.parameters(), lr=0, momentum=0) # no learning
+    ekfac_optim = EKFACOptimizer(model, select_modules=select_modules)
+    
+    for i, x in enumerate(tqdm(dataloader, desc='Calculate A, B', unit='step')):
+
+        try:
+            x, _ = x
+        except:
+            pass
+
+        optimizer.zero_grad()
+        ekfac_optim.zero_grad()
+        x = x.to(device)
+        z, nll, y_logits = model(x, None)
+        nll.backward()
+        ekfac_optim.step()
+        
+        if i >= max_iter - 1:
+            break
+            
+    A = ekfac_optim.m_aa
+    B = ekfac_optim.m_gg
+    U_A, U_B = {}, {}
+    S = {}
+    for name, module in model.named_modules():
+        if module in A.keys():
+            A[module] += 1e-12 * torch.diag(torch.ones(A[module].shape[0])).to(device)
+            B[module] += 1e-12 * torch.diag(torch.ones(B[module].shape[0])).to(device)
+            _, U_A[name] = torch.symeig(A[module], eigenvectors=True)
+            _, U_B[name] = torch.symeig(B[module], eigenvectors=True)
+            S[name] = 0
+
+    torch.manual_seed(seed)
+    random.seed(seed)
+    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=is_glow, batch_size=1)
+
+    for i, x in enumerate(tqdm(dataloader, desc='Calculate Fisher Inverse', unit='step')):
+        
+        try:
+            x, _ = x
+        except:
+            pass
+
+        optimizer.zero_grad()
+        x = x.to(device)
+        z, nll, y_logits = model(x, None)
+        nll.backward()
+
+        for name, module in model.named_modules():
+            if module in A.keys():
+                GRAD = module.weight.grad.view(module.weight.shape[0], -1) # without bias
+                if module.bias is not None:
+                    GRAD = torch.cat([GRAD, module.bias.grad.view(module.bias.shape[0], -1)], 1)
+                s = torch.mm(torch.mm(U_B[name].T, GRAD), U_A[name]).view(-1)
+                s = s ** 2
+                S[name] = (i * S[name] + s.clone().detach()) / (i + 1)
+        
+        if i >= max_iter - 1:
+            break
+        
+    train_score = {}
+    torch.manual_seed(seed)
+    random.seed(seed)
+    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=is_glow, batch_size=1)
+        
+    for i, x in enumerate(tqdm(dataloader, desc=f'Calculate Score of {opt.train_dist}(train)', unit='step')):
+        
+        try:
+            x, _ = x
+        except:
+            pass
+        
+        optimizer.zero_grad()
+        x = x.to(device)
+        z, nll, y_logits = model(x, None)
+        nll.backward()
+        
+        for name, module in model.named_modules():
+            if module in A.keys():
+                GRAD = module.weight.grad.view(module.weight.shape[0], -1) # without bias
+                if module.bias is not None:
+                    GRAD = torch.cat([GRAD, module.bias.grad.view(module.bias.shape[0], -1)], 1)
+                temp = torch.mm(torch.mm(U_B[name].T, GRAD), U_A[name]).view(-1, 1)
+                s = temp / (S[name].view(-1, 1) + 1e-8)
+                s = torch.mm(temp.T, s).detach().cpu().numpy().reshape(-1)
+                
+                if name in train_score.keys():
+                    train_score[name].append(s)
+                else:
+                    train_score[name] = []
+                    train_score[name].append(s)
+                    
+        if i >= max_iter - 1:
+            break
+    
+    # Obtain MEAN, STDDEV of ROSE in train-dist at each module.
+    mean, std = {}, {}
+    for name, module in model.named_modules():
+        if module in A.keys():
+            mean[name] = np.array(train_score[name]).mean()
+            std[name] = np.array(train_score[name]).std()
+                    
+    return U_A, U_B, S, mean, std
+        
+def Calculate_score_GLOW_ekfac(
+    model,
+    opt,
+    U_A,
+    U_B,
+    S,
+    ood,
+    max_iter,
+    seed=2021):
+    
+    is_glow = True
+    device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+    torch.manual_seed(seed)
+    random.seed(seed)
+    dataloader = TEST_loader(opt.train_dist, ood, is_glow=False)
+    model.eval()
+    optimizer = optim.SGD(model.parameters(), lr=0, momentum=0) # no learning
+    score = {}
+    if ood == opt.train_dist: # i.e, In-dist(test)
+        start = datetime.now()
+        
+    for i, x in enumerate(tqdm(dataloader, desc=f'Calculate Score of {ood}', unit='step')):
+        
+        try: # with label (ex : cifar10, svhn and etc.)
+            x, _ = x
+        except: # without label (ex : celeba)
+            pass
+        
+        optimizer.zero_grad()
+        x = x.to(device)
+        z, nll, y_logits = model(x, None)
+        nll.backward()
+        
+        for name, module in model.named_modules():
+            if name in U_A.keys():
+                GRAD = module.weight.grad.view(module.weight.shape[0], -1) # without bias
+                if module.bias is not None:
+                    GRAD = torch.cat([GRAD, module.bias.grad.view(module.bias.shape[0], -1)], 1)
+                temp = torch.mm(torch.mm(U_B[name].T, GRAD), U_A[name]).view(-1, 1)
+                s = temp / (S[name].view(-1, 1) + 1e-8)
+                s = torch.mm(temp.T, s).detach().cpu().numpy().reshape(-1)
+                
+                if name in score.keys():
+                    score[name].append(s)
+                else:
+                    score[name] = []
+                    score[name].append(s)
+        
+        if i >= max_iter - 1:
+            break
+            
+    for name in score.keys():
+        score[name] = np.array(score[name])
+    
+    if ood == opt.train_dist:
+        end = datetime.now()
+        avg_time = (end - start).total_seconds() / max_iter
+        print(f'Average Inference Time : {avg_time} seconds')
+        print(f'Average #Images Processed : {1 / avg_time} Images')
+    
+    return score
+        
+        
+        
+        
+        
+        
+        
+        
 def Calculate_fisher_GLOW(
     model,
     dataloader,
@@ -75,15 +267,12 @@ def Calculate_fisher_GLOW(
         elif method == 'Vanilla':
             grads = {}
             for pname, param in params.items():
-                grads[pname] = []
-                for p in param.parameters():
-                    grads[pname].append(p.grad.view(-1))
-                grads[pname] = torch.cat(grads[pname], dim=0)
-                a = np.array((torch.abs(grads[pname]) <= 3e-8).detach().cpu().numpy(), dtype=np.int)
-                print(a.sum())
-                plt.scatter(range(grads[pname].size()[0]), a, s=1)
-                plt.show()
-                #grads[pname] = param.grad.view(-1) ** 2
+                #grads[pname] = []
+                #for p in param.parameters():
+                #    grads[pname].append(p.grad.view(-1) ** 2)
+                #grads[pname] = torch.cat(grads[pname], dim=0)
+                #a = np.array((torch.abs(grads[pname]) <= 3e-8).detach().cpu().numpy(), dtype=np.int)
+                grads[pname] = param.grad.view(-1) ** 2
                 if i == 0:
                     Fisher_inv[pname] = grads[pname]
                 else:

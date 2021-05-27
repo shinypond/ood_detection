@@ -15,43 +15,46 @@ from custom_loss import VAE_loss_pixel, loglikelihood
 import config
 from data_loader import TRAIN_loader, TEST_loader
 
-from ekfac import EKFACOptimizer
+from ekfac_VAE import EKFACOptimizer
 
 # fix a random seed
-random.seed(2021)
-np.random.seed(2021)
-torch.manual_seed(2021)
+seed = 2021
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
 
 def Calculate_fisher_VAE_ekfac(
     netE,
     netG,
-    params,
     opt,
     max_iter,
-    loss_type='ELBO_pixel',):
+    select_modules=[],
+    loss_type='ELBO_pixel',
+    seed=2021,):
     
+    is_glow = False
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    torch.manual_seed(2021)
-    random.seed(2021)
-    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=False, batch_size=1)
+    torch.manual_seed(seed)
+    random.seed(seed)
+    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=is_glow, batch_size=1)
     netE.eval()
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
     optimizer2 = optim.SGD(netG.parameters(), lr=0, momentum=0) # no learning
-    ekfac_optim = EKFACOptimizer(netE)
-    Fisher_inv = {}
-    normalize_factor = {}
-    grads = {}
-    count = 0
+    ekfac_optim = EKFACOptimizer(netE, select_modules=select_modules)
     
-    for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate A, B', unit='step')):
+    for i, x in enumerate(tqdm(dataloader, desc='Calculate A, B', unit='step')):
+        
+        try:
+            x, _ = x
+        except:
+            pass
         
         optimizer1.zero_grad()
         optimizer2.zero_grad()
         ekfac_optim.zero_grad()
         x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
         [z, mu, logvar] = netE(x)
-        #mu = Variable(mu, requires_grad=True)
         
         if opt.num_samples == 1:
             recon = netG(mu)
@@ -72,15 +75,6 @@ def Calculate_fisher_VAE_ekfac(
         loss.backward(retain_graph=True)
         ekfac_optim.step()
         
-        """ 예전 버전
-        if i == 0:
-            A = torch.mm(pre_mu.view(-1, 1), pre_mu.view(1, -1))
-            B = torch.mm(mu.grad.view(-1, 1), mu.grad.view(1, -1))
-        else:
-            A = (i * A + torch.mm(pre_mu.view(-1, 1), pre_mu.view(1, -1))) / (i + 1)
-            B = (i * B + torch.mm(mu.grad.view(-1, 1), mu.grad.view(1, -1))) / (i + 1)
-        """
-        
         if i >= max_iter - 1:
             break
         
@@ -94,11 +88,17 @@ def Calculate_fisher_VAE_ekfac(
             _, U_B[name] = torch.symeig(B[module], eigenvectors=True)
             S[name] = 0
     
-    torch.manual_seed(2021)
-    random.seed(2021)
-    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=False, batch_size=1)
+    torch.manual_seed(seed)
+    random.seed(seed)
+    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=is_glow, batch_size=1)
     
-    for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher VAE by EKFAC', unit='step')):
+    for i, x in enumerate(tqdm(dataloader, desc='Calculate Fisher Inverse', unit='step')):
+        
+        try:
+            x, _ = x
+        except:
+            pass
+        
         optimizer1.zero_grad()
         optimizer2.zero_grad()
         x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
@@ -131,24 +131,21 @@ def Calculate_fisher_VAE_ekfac(
                 s = s ** 2
                 S[name] = (i * S[name] + s.clone().detach()) / (i + 1)
         
-        """ 예전 버전
-        assert list(params.keys()) == ['Econv1_w']
-        param = params['Econv1_w']
-        
-        s = torch.mm(torch.mm(U_B.T, param.grad.view(param.shape[0], -1)), U_A).view(-1)
-        s = s ** 2
-        S = (i * S + s.clone().detach()) / (i + 1)
-        """
-        
         if i >= max_iter - 1:
             break
     
     train_score = {}
-    torch.manual_seed(2021)
-    random.seed(2021)
-    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=False, batch_size=1)
+    torch.manual_seed(seed)
+    random.seed(seed)
+    dataloader = TRAIN_loader(option=opt.train_dist, is_glow=is_glow, batch_size=1)
     
-    for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher VAE by EKFAC', unit='step')):
+    for i, x in enumerate(tqdm(dataloader, desc=f'Calculate Score of {opt.train_dist}(train)', unit='step')):
+        
+        try:
+            x, _ = x
+        except:
+            pass
+        
         optimizer1.zero_grad()
         optimizer2.zero_grad()
         x = x.repeat(opt.num_samples, 1, 1, 1).to(device)
@@ -202,19 +199,20 @@ def Calculate_fisher_VAE_ekfac(
 def Calculate_score_VAE_ekfac(
     netE,
     netG,
-    params,
     opt,
     U_A,
     U_B,
     S,
     ood,
     max_iter,
-    loss_type='ELBO_pixel',):
+    loss_type='ELBO_pixel',
+    seed=2021):
     
+    is_glow = False
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
-    torch.manual_seed(2021)
-    random.seed(2021)
-    dataloader = TEST_loader(opt.train_dist, ood, is_glow=False)
+    torch.manual_seed(seed)
+    random.seed(seed)
+    dataloader = TEST_loader(opt.train_dist, ood, is_glow=is_glow)
     netE.eval()
     netG.eval()
     optimizer1 = optim.SGD(netE.parameters(), lr=0, momentum=0) # no learning
@@ -223,7 +221,7 @@ def Calculate_score_VAE_ekfac(
     if ood == opt.train_dist: # i.e, In-dist(test)
         start = datetime.now()
         
-    for i, x in enumerate(tqdm(dataloader, desc='Calculate Score VAE', unit='step')):
+    for i, x in enumerate(tqdm(dataloader, desc=f'Calculate Score of {ood}', unit='step')):
         
         try: # with label (ex : cifar10, svhn and etc.)
             x, _ = x
@@ -268,16 +266,6 @@ def Calculate_score_VAE_ekfac(
                     score[name] = []
                     score[name].append(s)
         
-        """
-        assert list(params.keys()) == ['Econv1_w']
-        param = params['Econv1_w']
-        
-        temp = torch.mm(torch.mm(U_B.T, param.grad.view(param.shape[0], -1)), U_A).view(-1, 1)
-        s = temp / (S.view(-1, 1) + 1e-8)
-        s = torch.mm(temp.T, s).detach().cpu().numpy().reshape(-1)
-        score.append(s)
-        """
-        
         if i >= max_iter - 1:
             break
             
@@ -293,7 +281,8 @@ def Calculate_score_VAE_ekfac(
     return score
         
         
-            
+
+        
         
         
         
