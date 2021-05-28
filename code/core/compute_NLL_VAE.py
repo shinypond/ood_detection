@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import random
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -67,7 +68,7 @@ def compute_NLL(weights):
 
 if __name__=="__main__":
 
-    cudnn.benchmark = True
+    cudnn.benchmark = False
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     
     print('Q. Dataset?')
@@ -75,17 +76,18 @@ if __name__=="__main__":
     ans = input('-> ')
     if ans == '1':
         opt = config.VAE_cifar10
-        opt.repeat = 200
-        opt.state_E = f'../../saved_models/VAE_cifar10/netE_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth'
-        opt.state_G = f'../../saved_models/VAE_cifar10/netG_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth'
+        opt.repeat = 1
+        opt.state_E = f'../../saved_models/VAE_cifar10/1/netE_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth'
+        opt.state_G = f'../../saved_models/VAE_cifar10/1/netG_pixel_ngf_64_nz_200_beta_1.0_augment_hflip_epoch_100.pth'
     elif ans == '2':
         opt = config.VAE_fmnist
-        opt.repeat = 200
-        opt.state_E = f'../../saved_models/VAE_fmnist/netE_pixel_ngf_32_nz_100_beta_1.0_augment_hflip_epoch_100.pth'
-        opt.state_G = f'../../saved_models/VAE_fmnist/netG_pixel_ngf_32_nz_100_beta_1.0_augment_hflip_epoch_100.pth'
+        opt.repeat = 1
+        opt.state_E = f'../../saved_models/VAE_fmnist/1/netE_pixel_ngf_32_nz_100_beta_1.0_augment_hflip_epoch_100.pth'
+        opt.state_G = f'../../saved_models/VAE_fmnist/1/netG_pixel_ngf_32_nz_100_beta_1.0_augment_hflip_epoch_100.pth'
     else:
         raise ValueError('Insert 1 or 2. Bye.')
     
+    assert opt.dataroot == '../../data', 'please go config.py and modify dataroot to "../../data"'
     ngpu = int(opt.ngpu)
     nz = int(opt.nz)
     ngf = int(opt.ngf)
@@ -116,7 +118,7 @@ if __name__=="__main__":
             x = xi.expand(opt.repeat,-1,-1,-1).contiguous()
             weights_agg = []
             with torch.no_grad():
-                for batch_number in range(5):
+                for batch_number in range(1):
                     x = x.to(device)
                     b = x.size(0)
                     [z,mu,logvar] = netE(x)
@@ -133,6 +135,6 @@ if __name__=="__main__":
             if i >= 4999:
                 break
 
-        np.save(f'../VAE_NLL_npy/{opt.train_dist}_{ood}_nll.npy', NLL)
+        np.save(f'../npy/VAE_NLL/{opt.train_dist}_{ood}_nll.npy', NLL)
 
     

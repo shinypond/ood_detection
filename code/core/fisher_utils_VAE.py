@@ -84,6 +84,8 @@ def Calculate_fisher_VAE_ekfac(
     S = {}
     for name, module in netE.named_modules():
         if module in A.keys():
+            A[module] += 1e-12 * torch.diag(torch.ones(A[module].shape[0])).to(device)
+            B[module] += 1e-12 * torch.diag(torch.ones(B[module].shape[0])).to(device)
             _, U_A[name] = torch.symeig(A[module], eigenvectors=True)
             _, U_B[name] = torch.symeig(B[module], eigenvectors=True)
             S[name] = 0

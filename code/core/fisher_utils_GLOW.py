@@ -61,8 +61,8 @@ def Calculate_fisher_GLOW_ekfac(
     S = {}
     for name, module in model.named_modules():
         if module in A.keys():
-            A[module] += 1e-12 * torch.diag(torch.ones(A[module].shape[0])).to(device)
-            B[module] += 1e-12 * torch.diag(torch.ones(B[module].shape[0])).to(device)
+            A[module] += 1e-15 * torch.diag(torch.ones(A[module].shape[0])).to(device)
+            B[module] += 1e-15 * torch.diag(torch.ones(B[module].shape[0])).to(device)
             _, U_A[name] = torch.symeig(A[module], eigenvectors=True)
             _, U_B[name] = torch.symeig(B[module], eigenvectors=True)
             S[name] = 0
@@ -118,7 +118,7 @@ def Calculate_fisher_GLOW_ekfac(
                 if module.bias is not None:
                     GRAD = torch.cat([GRAD, module.bias.grad.view(module.bias.shape[0], -1)], 1)
                 temp = torch.mm(torch.mm(U_B[name].T, GRAD), U_A[name]).view(-1, 1)
-                s = temp / (S[name].view(-1, 1) + 1e-8)
+                s = temp / (S[name].view(-1, 1) + 1e-15)
                 s = torch.mm(temp.T, s).detach().cpu().numpy().reshape(-1)
                 
                 if name in train_score.keys():
@@ -137,7 +137,7 @@ def Calculate_fisher_GLOW_ekfac(
             mean[name] = np.array(train_score[name]).mean()
             std[name] = np.array(train_score[name]).std()
                     
-    return U_A, U_B, S, mean, std
+    return U_A, U_B, S, mean, std, train_score
         
 def Calculate_score_GLOW_ekfac(
     model,
@@ -178,7 +178,9 @@ def Calculate_score_GLOW_ekfac(
                 if module.bias is not None:
                     GRAD = torch.cat([GRAD, module.bias.grad.view(module.bias.shape[0], -1)], 1)
                 temp = torch.mm(torch.mm(U_B[name].T, GRAD), U_A[name]).view(-1, 1)
-                s = temp / (S[name].view(-1, 1) + 1e-8)
+                print(name.split('.')[2:4], GRAD.shape, torch.abs(GRAD).max().item(), torch.abs(GRAD).mean().item())
+                print(torch.abs(temp).max().item(), torch.abs(temp).mean().item())
+                s = temp / (S[name].view(-1, 1) + 1e-15)
                 s = torch.mm(temp.T, s).detach().cpu().numpy().reshape(-1)
                 
                 if name in score.keys():
@@ -246,7 +248,6 @@ def Calculate_fisher_GLOW(
                         Fisher_inv[pname] = 1e-3 * identity.to(device)
                     Fisher_inv[pname] += torch.mm(grads[pname].unsqueeze(1), grads[pname].unsqueeze(0))
                 else: # calculate the inverse by SMW formula
-                    print(pname, param.shape)
                     for j in range(param.grad.shape[0]):
                         grads[pname].append(param.grad[j, :, :, :].view(-1, 1))
                     grads[pname] = torch.cat(grads[pname], dim=1).T.to(device)
@@ -262,7 +263,6 @@ def Calculate_fisher_GLOW(
                     denom = denom.unsqueeze(2)
                     numer = torch.bmm(b, b.permute(0, 2, 1))
                     Fisher_inv[pname] -= numer / denom
-                    print(Fisher_inv[pname].shape)
                 
         elif method == 'Vanilla':
             grads = {}

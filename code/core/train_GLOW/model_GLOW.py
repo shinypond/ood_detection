@@ -1,7 +1,7 @@
 import math
 import torch
 import torch.nn as nn
-from modules_GLOW import (
+from .modules_GLOW import (
     Conv2d,
     Conv2dZeros,
     ActNorm2d,
@@ -13,7 +13,7 @@ from modules_GLOW import (
     gaussian_likelihood,
     gaussian_sample,
 )
-from utils_GLOW import split_feature, uniform_binning_correction
+from .utils_GLOW import split_feature, uniform_binning_correction
 
 
 def get_block(in_channels, out_channels, hidden_channels):

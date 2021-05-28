@@ -72,8 +72,8 @@ class GLOW_cifar10:
                 'constant',
                 'overall',
                ]
-    dataroot = '../data'
-    modelroot = '../saved_models'
+    dataroot = '../../data'
+    modelroot = '../../saved_models'
     resume_train = False
     download = False
     augment = True
@@ -119,8 +119,8 @@ class GLOW_fmnist:
                 'constant',
                 'overall',
                ]
-    dataroot = '../data'
-    modelroot = '../saved_models'
+    dataroot = '../../data'
+    modelroot = '../../saved_models'
     resume_train = False
     download = False
     augment = True

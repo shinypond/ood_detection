@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import train_GLOW.modules_GLOW as modules_GLOW
 
 def try_contiguous(x):
     if not x.is_contiguous():
@@ -98,6 +99,8 @@ class ComputeCovA:
             cov_a = cls.linear(a, layer)
         elif isinstance(layer, nn.Conv2d):
             cov_a = cls.conv2d(a, layer)
+        elif str(layer.__class__) == "<class 'train_GLOW.modules_GLOW.InvertibleConv1x1'>":
+            cov_a = cls.invconv(a, layer)
         else:
             # FIXME(CW): for extension to other layers.
             # raise NotImplementedError
@@ -125,6 +128,15 @@ class ComputeCovA:
             a = torch.cat([a, a.new(a.size(0), 1).fill_(1)], 1)
         return a.t() @ (a / batch_size)
 
+    @staticmethod
+    def invconv(a, layer):
+        batch_size = a.size(0)
+        a = _extract_patches(a, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0))
+        spatial_size = a.size(1) * a.size(2)
+        a = a.view(-1, a.size(-1))
+        a = a/spatial_size
+        # FIXME(CW): do we need to divide the output feature map's size?
+        return a.t() @ (a / batch_size)
 
 class ComputeCovG:
 
@@ -145,6 +157,8 @@ class ComputeCovG:
             cov_g = cls.conv2d(g, layer, batch_averaged)
         elif isinstance(layer, nn.Linear):
             cov_g = cls.linear(g, layer, batch_averaged)
+        elif str(layer.__class__) == "<class 'train_GLOW.modules_GLOW.InvertibleConv1x1'>":
+            cov_g = cls.invconv(g, layer, batch_averaged)
         else:
             cov_g = None
 
@@ -159,23 +173,35 @@ class ComputeCovG:
         g = g.transpose(1, 2).transpose(2, 3)
         g = try_contiguous(g)
         g = g.view(-1, g.size(-1))
-
         if batch_averaged:
             g = g * batch_size
         g = g * spatial_size
         cov_g = g.t() @ (g / g.size(0))
-
         return cov_g
 
     @staticmethod
     def linear(g, layer, batch_averaged):
         # g: batch_size * out_dim
         batch_size = g.size(0)
-
         if batch_averaged:
             cov_g = g.t() @ (g * batch_size)
         else:
             cov_g = g.t() @ (g / batch_size)
+        return cov_g
+    
+    @staticmethod
+    def invconv(g, layer, batch_averaged):
+        # g: batch_size * n_filters * out_h * out_w
+        # n_filters is actually the output dimension (analogous to Linear layer)
+        spatial_size = g.size(2) * g.size(3)
+        batch_size = g.shape[0]
+        g = g.transpose(1, 2).transpose(2, 3)
+        g = try_contiguous(g)
+        g = g.view(-1, g.size(-1))
+        if batch_averaged:
+            g = g * batch_size
+        g = g * spatial_size
+        cov_g = g.t() @ (g / g.size(0))
         return cov_g
 
 class EKFACOptimizer(optim.Optimizer):
@@ -199,7 +225,7 @@ class EKFACOptimizer(optim.Optimizer):
         # Hence, notation should be changed as follows...
         self.known_modules = {
             "torch.nn.modules.conv.Conv2d",
-            #"modules_GLOW.InvertibleConv1x1",
+            "train_GLOW.modules_GLOW.InvertibleConv1x1",
         }
         if len(select_modules) != 0:
             self.select_modules = select_modules
