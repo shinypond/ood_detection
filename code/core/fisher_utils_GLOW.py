@@ -215,7 +215,8 @@ def Calculate_fisher_GLOW(
     dataloader,
     params,
     max_iter,
-    method='SMW',):
+    method='Vanilla',
+    seed=2021):
     
     """ model : trained GLOW model """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
@@ -228,6 +229,8 @@ def Calculate_fisher_GLOW(
     optimizer = optim.SGD(model.parameters(), lr=0, momentum=0) # no learning
     Fisher_inv = {}
     count = 0
+    torch.manual_seed(seed)
+    random.seed(seed)
 
     for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher GLOW', unit='step')):
 
@@ -298,7 +301,35 @@ def Calculate_fisher_GLOW(
             Fisher_inv[pname][Fisher_inv[pname]==0] = 1e-15
             normalize_factor[pname] = 2 * np.sqrt(len(Fisher_inv[pname]))
         
-    return Fisher_inv, normalize_factor
+    ###################3######################3 
+    torch.manual_seed(seed)
+    random.seed(seed)
+    train_score = {}
+
+    for i, (x, _) in enumerate(tqdm(dataloader, desc='Calculate Fisher GLOW', unit='step')):
+
+        optimizer.zero_grad()
+        x = x.to(device)
+        z, nll, y_logits = model(x, None)
+        nll.backward()
+        
+        if method == 'Vanilla':
+            grads = {}
+            for pname, param in params.items():
+                grads[pname] = param.grad.view(-1)
+                s = torch.norm(grads[pname] / Fisher_inv[pname]).detach().cpu()
+                #s = torch.norm(grads[pname]).detach().cpu()
+                if i == 0:
+                    train_score[pname] = []
+                train_score[pname].append(s.numpy())
+                
+        if i >= max_iter - 1:
+            break
+            
+    for pname, _ in params.items():
+        train_score[pname] = np.array(train_score[pname]) / normalize_factor[pname]
+        
+    return Fisher_inv, normalize_factor, train_score
 
 def Calculate_score_GLOW(
     model,
@@ -307,7 +338,8 @@ def Calculate_score_GLOW(
     Fisher_inv,
     normalize_factor,
     max_iter,
-    method='SMW',):
+    method='SMW',
+    seed=2021):
     
     """ model : trained GLOW model """
     """ dataloader : Load 'train distribution' (ex : CIFAR10, FMNIST) """
@@ -319,6 +351,8 @@ def Calculate_score_GLOW(
     device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
     optimizer = optim.SGD(model.parameters(), lr=0, momentum=0)
     score = {}
+    torch.manual_seed(seed)
+    random.seed(seed)
         
     for i, x in enumerate(tqdm(dataloader, desc='Calculate Score GLOW', unit='step')):
         
@@ -394,7 +428,7 @@ def AUTO_GLOW(
     
     Gradients = {}
     
-    Fisher_inv, normalize_factor = Calculate_fisher_GLOW(
+    Fisher_inv, normalize_factor, train_score = Calculate_fisher_GLOW(
         model,
         TRAIN_loader(
             option=opt.train_dist,
@@ -421,7 +455,7 @@ def AUTO_GLOW(
             method=method,
         )
     
-    return Fisher_inv, normalize_factor, Gradients
+    return Fisher_inv, normalize_factor, train_score, Gradients
     
 
 

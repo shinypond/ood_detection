@@ -111,7 +111,7 @@ if __name__=="__main__":
             split,
         )
         model_bg_path = f'{opt.modelroot}/GLOW_{opt.train_dist}/LRatio_bg/glow_ratio_0.2_decay_5e-05_epoch_50.pth'
-        model_bg.load_state_dict(torch.load(model_bg_path)['model']) # there are two keys: 'model', 'optimizer'
+        model_bg.load_state_dict(torch.load(model_bg_path)) # there are two keys: 'model', 'optimizer'
         model_bg.set_actnorm_init()
         model_bg = model_bg.to(device)
         model_bg = model_bg.eval()
@@ -160,7 +160,7 @@ if __name__=="__main__":
             split,
         )
         model_bg_path = f'{opt.modelroot}/GLOW_{opt.train_dist}/LRatio_bg/glow_ratio_0.3_decay_0.0_epoch_50.pth'
-        model_bg.load_state_dict(torch.load(model_bg_path)['model']) # there are two keys: 'model', 'optimizer'
+        model_bg.load_state_dict(torch.load(model_bg_path)) # there are two keys: 'model', 'optimizer'
         model_bg.set_actnorm_init()
         model_bg = model_bg.to(device)
         model_bg = model_bg.eval()

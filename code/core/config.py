@@ -65,15 +65,15 @@ class GLOW_cifar10:
                 'lsun',
                 'mnist',
                 'fmnist',
-                'kmnist',
-                'omniglot',
+                #'kmnist',
+                #'omniglot',
                 'notmnist',
                 'noise',
                 'constant',
                 'overall',
                ]
-    dataroot = '../../data'
-    modelroot = '../../saved_models'
+    dataroot = '../data'
+    modelroot = '../saved_models'
     resume_train = False
     download = False
     augment = True
@@ -108,8 +108,8 @@ class GLOW_fmnist:
     train_dist = 'fmnist'
     ood_list = ['fmnist',
                 'svhn',
-                'celeba',
-                'lsun',
+                #'celeba',
+                #'lsun',
                 'cifar10',
                 'mnist',
                 'kmnist',
@@ -119,8 +119,8 @@ class GLOW_fmnist:
                 'constant',
                 'overall',
                ]
-    dataroot = '../../data'
-    modelroot = '../../saved_models'
+    dataroot = '../data'
+    modelroot = '../saved_models'
     resume_train = False
     download = False
     augment = True

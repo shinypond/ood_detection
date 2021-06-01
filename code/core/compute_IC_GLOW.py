@@ -73,6 +73,7 @@ if __name__=="__main__":
     
     if ans == '1':
         opt = config.GLOW_cifar10
+        size = 32 * 32 * 3
         image_shape = (32, 32, 3)
         num_classes = 10
         split = True
@@ -102,6 +103,7 @@ if __name__=="__main__":
         
     elif ans == '2':
         opt = config.GLOW_fmnist
+        size = 32 * 32
         image_shape = (32, 32, 1)
         num_classes = 10
         split = False
@@ -186,7 +188,8 @@ if __name__=="__main__":
                     assert 0==1
                 L = len(img_encoded[1]) * 8
                 Complexity.append(L)
-                difference.append(NLL_loss - L)
+                difference.append(NLL_loss * (size) * np.log(2) - L)
+                
             
                 print(f'{ood} GLOW: image {i} IC loss {NLL_loss - L:.2f}')
             
