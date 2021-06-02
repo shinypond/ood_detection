@@ -29,39 +29,12 @@ random.seed(2021)
 np.random.seed(2021)
 torch.manual_seed(2021)
 
-def reparameterize(mu, logvar, device):
-    std = torch.exp(0.5 * logvar)
-    eps = torch.randn_like(std).to(device)
-    return eps.mul(std).add_(mu)
+def postprocess(x):
+    x = torch.clamp(x, -0.5, 0.5)
+    x += 0.5
+    x = x * 2 ** 8
+    return torch.clamp(x, 0, 255).byte()
 
-def KL_div(mu,logvar,reduction = 'none'):
-    mu = mu.view(mu.size(0), mu.size(1))
-    logvar = logvar.view(logvar.size(0), logvar.size(1))
-    if reduction == 'sum':
-        return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) 
-    else:
-        KL = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1) 
-        return KL
-
-def store_NLL(x, recon, mu, logvar, z):
-    with torch.no_grad():
-        b = x.size(0)
-        target = Variable(x.data.view(-1) * 255).long()
-        recon = recon.contiguous()
-        recon = recon.view(-1, 256)
-        cross_entropy = F.cross_entropy(recon, target, reduction='none')
-        log_p_x_z = -torch.sum(cross_entropy.view(b, -1), 1)
-        log_p_z = -torch.sum(z**2 / 2 + np.log(2 * np.pi) / 2,1)
-        z_eps = z - mu
-        z_eps = z_eps.view(opt.repeat, -1)
-        log_q_z_x = -torch.sum(z_eps**2 / 2 + np.log(2 * np.pi) / 2 + logvar / 2, 1)
-        weights = log_p_x_z + log_p_z - log_q_z_x
-    return weights
-
-def compute_NLL(weights):
-    with torch.no_grad():
-        NLL_loss = -(torch.log(torch.mean(torch.exp(weights - weights.max()))) + weights.max()) 
-    return NLL_loss
 
 if __name__=="__main__":
 
@@ -176,9 +149,8 @@ if __name__=="__main__":
                 x = x.to(device)
                 _, NLL_loss, _ = model(x, None)
                 NLL_loss = NLL_loss.detach().cpu().numpy()[0]
-                img = x[0].permute(1, 2, 0)
-                img = img.detach().cpu().numpy()
-                img *= 255
+                img = postprocess(x[0]).permute(1, 2, 0) # img *= 255
+                img = img.detach().cpu().numpy() 
                 img = img.astype(np.uint8)
                 if opt.ic_type == 'jp2':
                     img_encoded = cv2.imencode('.jp2',img)
@@ -191,7 +163,7 @@ if __name__=="__main__":
                 difference.append(NLL_loss * (size) * np.log(2) - L)
                 
             
-                print(f'{ood} GLOW: image {i} IC loss {NLL_loss - L:.2f}')
+                print(f'{ood} GLOW: image {i} IC loss {NLL_loss * (size) * np.log(2)  - L:.2f}')
             
             if i >= test_num - 1:
                 break
@@ -200,5 +172,3 @@ if __name__=="__main__":
 
         np.save(f'../npy/IC({opt.ic_type})_GLOW/{opt.train_dist}_{ood}.npy', difference)
         print(f'saved {opt.train_dist}_{ood} IC({opt.ic_type})_GLOW npy !')
-
-
